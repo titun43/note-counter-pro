@@ -21,98 +21,82 @@ jobs:
     - name: Download apktool
       run: |
         wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -O apktool.jar
-        ls -lh apktool.jar
 
-    - name: Prepare apktool project directory
+    - name: Prepare and build APK
       run: |
         mkdir -p apktool_project/smali
         
-        # Copy all decompiled resources (this includes AndroidManifest.xml, res/, assets/, etc.)
+        # Copy all decompiled resources
         cp -r decompiled_resources/* apktool_project/
         
-        # Remove classes.dex from apktool project (apktool uses smali instead)
+        # Remove classes.dex (apktool uses smali instead)
         rm -f apktool_project/classes.dex
         rm -f apktool_project/*.properties
         
-        # Copy smali code into the project
+        # Copy smali code (excluding dailylifepro)
         cp -r smali_code/* apktool_project/smali/
         
-        # Copy unknown files
-        mkdir -p apktool_project/unknown
-        cp -r unknown_files/* apktool_project/unknown/ 2>/dev/null || true
+        # Remove leftover dailylifepro package
+        rm -rf apktool_project/smali/com/lokhnathtechnical/dailylifepro
         
-        # Copy original signing info
-        mkdir -p apktool_project/original
-        cp -r original_signing/* apktool_project/original/ 2>/dev/null || true
-        
-        # Copy kotlin metadata
+        # Copy other required files
+        cp -r unknown_files/* apktool_project/unknown/ 2>/dev/null || mkdir -p apktool_project/unknown
+        cp -r original_signing/* apktool_project/original/ 2>/dev/null || mkdir -p apktool_project/original
         cp -r kotlin_metadata apktool_project/kotlin 2>/dev/null || true
         
-        echo "=== Project structure ==="
-        ls -la apktool_project/
-        echo "=== Smali dirs ==="
-        ls apktool_project/smali/ | wc -l
-        echo "=== apktool.yml ==="
-        cat apktool_project/apktool.yml
-
-    - name: Build APK with apktool
-      run: |
-        java -jar apktool.jar b apktool_project -o note-counter-pro-unsigned.apk 2>&1
-        ls -lh *.apk 2>/dev/null || echo "APK build may have failed"
-
-    - name: Sign APK with debug key
-      run: |
-        if [ -f "note-counter-pro-unsigned.apk" ]; then
-          # Generate debug keystore
-          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey \
-            -storepass android -keypass android -keyalg RSA -keysize 2048 \
-            -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          
-          # Zipalign (optional but recommended)
-          # Sign with jarsigner
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore debug.keystore -storepass android -keypass android \
-            note-counter-pro-unsigned.apk androiddebugkey
-          
-          # Rename
-          mv note-counter-pro-unsigned.apk note-counter-pro-debug.apk
-          
-          # Verify
-          jarsigner -verify note-counter-pro-debug.apk
-          ls -lh note-counter-pro-debug.apk
-        else
-          echo "No APK to sign"
-        fi
+        echo "=== Building APK ==="
+        java -jar apktool.jar b apktool_project -o app-unsigned.apk
+        
+        echo "=== Signing APK ==="
+        keytool -genkeypair -v -keystore debug.keystore -alias key0 \
+          -keyalg RSA -keysize 2048 -validity 10000 \
+          -storepass android -keypass android \
+          -dname "CN=Android Debug,O=Android,C=US"
+        
+        jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+          -keystore debug.keystore -storepass android -keypass android \
+          app-unsigned.apk key0
+        
+        mv app-unsigned.apk note-counter-pro-debug.apk
+        jarsigner -verify note-counter-pro-debug.apk
+        ls -lh note-counter-pro-debug.apk
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: note-counter-pro-apk
         path: note-counter-pro-debug.apk
-        if-no-files-found: warn
 
-    - name: Create Release
-      if: success()
+    - name: Create Release with APK
       run: |
-        if [ -f "note-counter-pro-debug.apk" ]; then
-          # Create a release using GitHub API
-          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases" \
-            -d "{
-              \"tag_name\": \"v2.7.0-recovered\",
-              \"name\": \"Note Counter Pro v2.7.0 (Recovered)\",
-              \"body\": \"APK rebuilt from decompiled sources using apktool. Debug signed.\",
-              \"draft\": false,
-              \"prerelease\": true
-            }" > release.json
-          
-          # Get upload URL
-          UPLOAD_URL=$(python3 -c "import json; print(json.load(open('release.json'))['upload_url'].replace('{?name,label}',''))")
-          
-          # Upload APK
-          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary @note-counter-pro-debug.apk \
-            "$UPLOAD_URL?name=note-counter-pro-debug.apk"
+        # Delete old release if exists
+        curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/tags/v2.7.0-recovered" | \
+          python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id','none'))" > release_id.txt
+        
+        OLD_ID=$(cat release_id.txt)
+        if [ "$OLD_ID" != "none" ]; then
+          curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/$OLD_ID"
+          curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/v2.7.0-recovered"
         fi
+        
+        # Create new release
+        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          "https://api.github.com/repos/${{ github.repository }}/releases" \
+          -d '{
+            "tag_name": "v2.7.0-recovered",
+            "name": "Note Counter Pro v2.7.0 (Recovered - Fixed)",
+            "body": "APK rebuilt from decompiled sources. Debug signed. Fixed package name.",
+            "draft": false,
+            "prerelease": true
+          }' > release.json
+        
+        UPLOAD_URL=$(python3 -c "import json; print(json.load(open('release.json'))['upload_url'].replace('{?name,label}',''))")
+        
+        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/vnd.android.package-archive" \
+          --data-binary @note-counter-pro-debug.apk \
+          "$UPLOAD_URL?name=note-counter-pro-debug.apk"

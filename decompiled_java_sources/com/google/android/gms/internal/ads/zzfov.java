@@ -1,0 +1,34 @@
+package com.google.android.gms.internal.ads;
+
+/* loaded from: classes.dex */
+public final class zzfov extends zzibl implements zzidd {
+    private zzfov() {
+        throw null;
+    }
+
+    public final int zza() {
+        return ((zzfoy) this.zza).zza();
+    }
+
+    public final zzfov zzb(zzfow zzfowVar) {
+        zzbg();
+        ((zzfoy) this.zza).zzc((zzfox) zzfowVar.zzbu());
+        return this;
+    }
+
+    public final zzfov zzc() {
+        zzbg();
+        ((zzfoy) this.zza).zzd();
+        return this;
+    }
+
+    /* JADX WARN: Illegal instructions before constructor call */
+    /*
+        Code decompiled incorrectly, please refer to instructions dump.
+    */
+    public /* synthetic */ zzfov(byte[] bArr) {
+        super(r1);
+        zzfoy zzfoyVar;
+        zzfoyVar = zzfoy.zzd;
+    }
+}

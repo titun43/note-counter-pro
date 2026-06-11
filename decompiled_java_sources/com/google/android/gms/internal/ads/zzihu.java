@@ -1,0 +1,18 @@
+package com.google.android.gms.internal.ads;
+
+/* loaded from: classes.dex */
+public final class zzihu extends zzibl implements zzidd {
+    private zzihu() {
+        throw null;
+    }
+
+    /* JADX WARN: Illegal instructions before constructor call */
+    /*
+        Code decompiled incorrectly, please refer to instructions dump.
+    */
+    public /* synthetic */ zzihu(byte[] bArr) {
+        super(r1);
+        zzihv zzihvVar;
+        zzihvVar = zzihv.zzd;
+    }
+}

@@ -1,0 +1,64 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.lokhnathtechnical.notecounterpro'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.lokhnathtechnical.notecounterpro"
+        minSdk 24
+        targetSdk 36
+        versionCode 11
+        versionName "2.7.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+}
+
+dependencies {
+    // Capacitor Core
+    implementation 'com.getcapacitor:capacitor-android:6.2.0'
+
+    // Capacitor Plugins
+    implementation 'com.capacitorjs:app:6.0.0'
+    implementation 'com.capacitorjs:filesystem:6.0.0'
+    implementation 'com.capacitorjs:haptics:6.0.0'
+    implementation 'com.capacitorjs:share:6.0.0'
+
+    // AdMob
+    implementation 'com.getcapacitor.community:admob:6.0.0'
+
+    // Google Play Billing
+    implementation 'com.android.billingclient:billing:7.1.1'
+
+    // Google Ads
+    implementation 'com.google.android.gms:play-services-ads:23.6.0'
+
+    // AndroidX
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.core:core:1.15.0'
+    implementation 'androidx.work:work-runtime:2.10.0'
+    implementation 'androidx.emoji2:emoji2:1.5.0'
+    implementation 'androidx.profileinstaller:profileinstaller:1.4.1'
+    implementation 'androidx.startup:startup-runtime:1.2.0'
+
+    // Core Splash Screen
+    implementation 'androidx.core:core-splashscreen:1.0.1'
+}

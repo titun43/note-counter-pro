@@ -20,68 +20,99 @@ jobs:
 
     - name: Download apktool
       run: |
-        # Try multiple sources for apktool
-        wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -O apktool.jar || \
-        curl -sL "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -o apktool.jar
+        wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -O apktool.jar
         ls -lh apktool.jar
 
-    - name: Prepare apktool project
+    - name: Prepare apktool project directory
       run: |
-        # Create the apktool project structure from decompiled_resources
-        mkdir -p apktool_project
+        mkdir -p apktool_project/smali
         
-        # Copy the apktool decompiled output
-        cp -r decompiled_resources/* apktool_project/ 2>/dev/null || true
+        # Copy all decompiled resources (this includes AndroidManifest.xml, res/, assets/, etc.)
+        cp -r decompiled_resources/* apktool_project/
         
-        # Also copy from the app directory if needed
-        if [ ! -f "apktool_project/AndroidManifest.xml" ]; then
-          cp app/src/main/AndroidManifest.xml apktool_project/
-        fi
+        # Remove classes.dex from apktool project (apktool uses smali instead)
+        rm -f apktool_project/classes.dex
+        rm -f apktool_project/*.properties
         
-        # Copy assets from app directory
-        if [ -d "app/src/main/assets" ]; then
-          cp -r app/src/main/assets/* apktool_project/assets/ 2>/dev/null || true
-        fi
+        # Copy smali code into the project
+        cp -r smali_code/* apktool_project/smali/
         
-        # Copy smali code
-        cp -r smali_code/* apktool_project/smali/ 2>/dev/null || mkdir -p apktool_project/smali
+        # Copy unknown files
+        mkdir -p apktool_project/unknown
+        cp -r unknown_files/* apktool_project/unknown/ 2>/dev/null || true
         
-        echo "=== apktool_project structure ==="
+        # Copy original signing info
+        mkdir -p apktool_project/original
+        cp -r original_signing/* apktool_project/original/ 2>/dev/null || true
+        
+        # Copy kotlin metadata
+        cp -r kotlin_metadata apktool_project/kotlin 2>/dev/null || true
+        
+        echo "=== Project structure ==="
         ls -la apktool_project/
-        ls apktool_project/smali/ | head -10
+        echo "=== Smali dirs ==="
+        ls apktool_project/smali/ | wc -l
+        echo "=== apktool.yml ==="
+        cat apktool_project/apktool.yml
 
     - name: Build APK with apktool
       run: |
-        java -jar apktool.jar b apktool_project -o note-counter-pro-debug.apk 2>&1 || true
-        ls -lh *.apk 2>/dev/null || echo "No APK built"
+        java -jar apktool.jar b apktool_project -o note-counter-pro-unsigned.apk 2>&1
+        ls -lh *.apk 2>/dev/null || echo "APK build may have failed"
 
-    - name: Sign APK (debug)
+    - name: Sign APK with debug key
       run: |
-        if [ -f "note-counter-pro-debug.apk" ]; then
-          # Generate a debug keystore
-          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+        if [ -f "note-counter-pro-unsigned.apk" ]; then
+          # Generate debug keystore
+          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey \
+            -storepass android -keypass android -keyalg RSA -keysize 2048 \
+            -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           
-          # Sign the APK
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore debug.keystore -storepass android -keypass android note-counter-pro-debug.apk androiddebugkey
+          # Zipalign (optional but recommended)
+          # Sign with jarsigner
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore debug.keystore -storepass android -keypass android \
+            note-counter-pro-unsigned.apk androiddebugkey
+          
+          # Rename
+          mv note-counter-pro-unsigned.apk note-counter-pro-debug.apk
           
           # Verify
           jarsigner -verify note-counter-pro-debug.apk
+          ls -lh note-counter-pro-debug.apk
+        else
+          echo "No APK to sign"
         fi
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
-      if: always()
       with:
         name: note-counter-pro-apk
-        path: '*.apk'
+        path: note-counter-pro-debug.apk
         if-no-files-found: warn
 
-    - name: Create Release with APK
+    - name: Create Release
       if: success()
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v2.7.0-recovered
-        name: Note Counter Pro v2.7.0 (Recovered)
-        files: '*.apk'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if [ -f "note-counter-pro-debug.apk" ]; then
+          # Create a release using GitHub API
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            -d "{
+              \"tag_name\": \"v2.7.0-recovered\",
+              \"name\": \"Note Counter Pro v2.7.0 (Recovered)\",
+              \"body\": \"APK rebuilt from decompiled sources using apktool. Debug signed.\",
+              \"draft\": false,
+              \"prerelease\": true
+            }" > release.json
+          
+          # Get upload URL
+          UPLOAD_URL=$(python3 -c "import json; print(json.load(open('release.json'))['upload_url'].replace('{?name,label}',''))")
+          
+          # Upload APK
+          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary @note-counter-pro-debug.apk \
+            "$UPLOAD_URL?name=note-counter-pro-debug.apk"
+        fi

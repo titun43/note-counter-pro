@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK with apktool
 
 on:
   push:
@@ -18,99 +18,70 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Install apktool
+    - name: Download apktool
       run: |
-        wget -q https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar -O apktool.jar
-        chmod +x apktool.jar
+        # Try multiple sources for apktool
+        wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -O apktool.jar || \
+        curl -sL "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -o apktool.jar
+        ls -lh apktool.jar
 
-    - name: Copy original APK resources
+    - name: Prepare apktool project
       run: |
-        # The apktool_output directory has the full decompiled APK
-        # We need to rebuild from it
-        ls -la decompiled_resources/ 2>/dev/null || true
-        ls -la smali_code/ 2>/dev/null || true
+        # Create the apktool project structure from decompiled_resources
+        mkdir -p apktool_project
+        
+        # Copy the apktool decompiled output
+        cp -r decompiled_resources/* apktool_project/ 2>/dev/null || true
+        
+        # Also copy from the app directory if needed
+        if [ ! -f "apktool_project/AndroidManifest.xml" ]; then
+          cp app/src/main/AndroidManifest.xml apktool_project/
+        fi
+        
+        # Copy assets from app directory
+        if [ -d "app/src/main/assets" ]; then
+          cp -r app/src/main/assets/* apktool_project/assets/ 2>/dev/null || true
+        fi
+        
+        # Copy smali code
+        cp -r smali_code/* apktool_project/smali/ 2>/dev/null || mkdir -p apktool_project/smali
+        
+        echo "=== apktool_project structure ==="
+        ls -la apktool_project/
+        ls apktool_project/smali/ | head -10
 
     - name: Build APK with apktool
       run: |
-        # Create a working directory with all the needed files
-        mkdir -p rebuild
-        
-        # Copy the original decompiled APK structure
-        # The apktool_output from recovery is in decompiled_resources
-        # Let's use the original uploaded APK approach instead
-        
-        # Check if we have the smali code
-        echo "=== Checking smali directories ==="
-        ls smali_code/ | head -10
+        java -jar apktool.jar b apktool_project -o note-counter-pro-debug.apk 2>&1 || true
+        ls -lh *.apk 2>/dev/null || echo "No APK built"
 
-    - name: Build with Gradle (source-based)
+    - name: Sign APK (debug)
       run: |
-        # Create a proper Android project with all decompiled sources
-        mkdir -p app/src/main/java
-        
-        # Copy all decompiled Java sources into the project
-        cp -r decompiled_java_sources/* app/src/main/java/ 2>/dev/null || true
-        
-        # Copy resources from decompiled_resources
-        if [ -d "decompiled_resources/res" ]; then
-          cp -r decompiled_resources/res app/src/main/res/ 2>/dev/null || true
+        if [ -f "note-counter-pro-debug.apk" ]; then
+          # Generate a debug keystore
+          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          
+          # Sign the APK
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore debug.keystore -storepass android -keypass android note-counter-pro-debug.apk androiddebugkey
+          
+          # Verify
+          jarsigner -verify note-counter-pro-debug.apk
         fi
-        
-        echo "=== Source files copied ==="
-        find app/src/main/java -name "*.java" | wc -l
 
-    - name: Create minimal build without Capacitor deps
-      run: |
-        # Update build.gradle to remove Capacitor Maven dependencies
-        # since we have the decompiled source files
-        cat > app/build.gradle << 'GRADLE'
-        apply plugin: 'com.android.application'
-
-        android {
-            namespace 'com.lokhnathtechnical.notecounterpro'
-            compileSdk 36
-
-            defaultConfig {
-                applicationId "com.lokhnathtechnical.notecounterpro"
-                minSdk 24
-                targetSdk 36
-                versionCode 11
-                versionName "2.7.0"
-            }
-
-            buildTypes {
-                debug {
-                    minifyEnabled false
-                }
-            }
-
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_17
-                targetCompatibility JavaVersion.VERSION_17
-            }
-        }
-
-        dependencies {
-            implementation 'androidx.appcompat:appcompat:1.7.0'
-            implementation 'androidx.core:core:1.15.0'
-            implementation 'androidx.work:work-runtime:2.10.0'
-            implementation 'androidx.core:core-splashscreen:1.0.1'
-        }
-        GRADLE
-
-    - name: Try Gradle Build
-      run: |
-        chmod +x gradlew 2>/dev/null || true
-        echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-        ./gradlew assembleDebug 2>&1 | tail -30 || true
-
-    - name: Find APK
-      run: find . -name "*.apk" -type f 2>/dev/null
-
-    - name: Upload APK
+    - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: note-counter-pro-apk
-        path: '**/*.apk'
+        path: '*.apk'
         if-no-files-found: warn
+
+    - name: Create Release with APK
+      if: success()
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v2.7.0-recovered
+        name: Note Counter Pro v2.7.0 (Recovered)
+        files: '*.apk'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

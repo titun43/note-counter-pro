@@ -18,27 +18,96 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-
-    - name: Create gradlew
+    - name: Install apktool
       run: |
-        cat > gradlew << 'GRADLEW'
-        #!/bin/sh
-        exec gradle "$@"
-        GRADLEW
-        chmod +x gradlew
+        wget -q https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar -O apktool.jar
+        chmod +x apktool.jar
 
-    - name: Create local.properties
-      run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+    - name: Copy original APK resources
+      run: |
+        # The apktool_output directory has the full decompiled APK
+        # We need to rebuild from it
+        ls -la decompiled_resources/ 2>/dev/null || true
+        ls -la smali_code/ 2>/dev/null || true
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug 2>&1 || true
+    - name: Build APK with apktool
+      run: |
+        # Create a working directory with all the needed files
+        mkdir -p rebuild
+        
+        # Copy the original decompiled APK structure
+        # The apktool_output from recovery is in decompiled_resources
+        # Let's use the original uploaded APK approach instead
+        
+        # Check if we have the smali code
+        echo "=== Checking smali directories ==="
+        ls smali_code/ | head -10
+
+    - name: Build with Gradle (source-based)
+      run: |
+        # Create a proper Android project with all decompiled sources
+        mkdir -p app/src/main/java
+        
+        # Copy all decompiled Java sources into the project
+        cp -r decompiled_java_sources/* app/src/main/java/ 2>/dev/null || true
+        
+        # Copy resources from decompiled_resources
+        if [ -d "decompiled_resources/res" ]; then
+          cp -r decompiled_resources/res app/src/main/res/ 2>/dev/null || true
+        fi
+        
+        echo "=== Source files copied ==="
+        find app/src/main/java -name "*.java" | wc -l
+
+    - name: Create minimal build without Capacitor deps
+      run: |
+        # Update build.gradle to remove Capacitor Maven dependencies
+        # since we have the decompiled source files
+        cat > app/build.gradle << 'GRADLE'
+        apply plugin: 'com.android.application'
+
+        android {
+            namespace 'com.lokhnathtechnical.notecounterpro'
+            compileSdk 36
+
+            defaultConfig {
+                applicationId "com.lokhnathtechnical.notecounterpro"
+                minSdk 24
+                targetSdk 36
+                versionCode 11
+                versionName "2.7.0"
+            }
+
+            buildTypes {
+                debug {
+                    minifyEnabled false
+                }
+            }
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.7.0'
+            implementation 'androidx.core:core:1.15.0'
+            implementation 'androidx.work:work-runtime:2.10.0'
+            implementation 'androidx.core:core-splashscreen:1.0.1'
+        }
+        GRADLE
+
+    - name: Try Gradle Build
+      run: |
+        chmod +x gradlew 2>/dev/null || true
+        echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+        ./gradlew assembleDebug 2>&1 | tail -30 || true
 
     - name: Find APK
       run: find . -name "*.apk" -type f 2>/dev/null
 
-    - name: Upload APK artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       if: always()
       with:

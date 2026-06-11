@@ -48,16 +48,34 @@ jobs:
         java -jar apktool.jar b apktool_project -o app-unsigned.apk
         
         echo "=== Signing APK ==="
-        keytool -genkeypair -v -keystore debug.keystore -alias key0 \
-          -keyalg RSA -keysize 2048 -validity 10000 \
-          -storepass android -keypass android \
-          -dname "CN=Android Debug,O=Android,C=US"
+        # Check if custom keystore is provided via secrets
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "Using custom keystore from secrets..."
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore release.keystore \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.KEY_PASSWORD }}" \
+            -signedJar note-counter-pro-signed.apk \
+            app-unsigned.apk \
+            "${{ secrets.KEY_ALIAS }}"
+          
+          mv note-counter-pro-signed.apk note-counter-pro-debug.apk
+        else
+          echo "No custom keystore found. Using debug signing..."
+          keytool -genkeypair -v -keystore debug.keystore -alias key0 \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+          
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore debug.keystore -storepass android -keypass android \
+            app-unsigned.apk key0
+          
+          mv app-unsigned.apk note-counter-pro-debug.apk
+        fi
         
-        jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-          -keystore debug.keystore -storepass android -keypass android \
-          app-unsigned.apk key0
-        
-        mv app-unsigned.apk note-counter-pro-debug.apk
         jarsigner -verify note-counter-pro-debug.apk
         ls -lh note-counter-pro-debug.apk
 
@@ -88,8 +106,8 @@ jobs:
           "https://api.github.com/repos/${{ github.repository }}/releases" \
           -d '{
             "tag_name": "v2.7.0-recovered",
-            "name": "Note Counter Pro v2.7.0 (Recovered - Fixed)",
-            "body": "APK rebuilt from decompiled sources. Debug signed. Fixed package name.",
+            "name": "Note Counter Pro v2.7.0 (Recovered - Fixed Package Name)",
+            "body": "APK rebuilt from decompiled sources. Fixed package name and signing.",
             "draft": false,
             "prerelease": true
           }' > release.json

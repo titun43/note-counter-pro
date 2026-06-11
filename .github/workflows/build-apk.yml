@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -109,36 +112,21 @@ jobs:
         path: note-counter-pro-debug.apk
 
     - name: Create Release with APK
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        TOKEN="${{ secrets.GITHUB_TOKEN }}"
-        REPO="${{ github.repository }}"
-        
         # Delete old release if exists
         for tag in v2.7.0-recovered v2.7.0-fixed; do
-          ID=$(curl -s -H "Authorization: token $TOKEN" \
-            "https://api.github.com/repos/$REPO/releases/tags/$tag" | \
-            python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+          ID=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq '.id' 2>/dev/null || echo "")
           if [ -n "$ID" ]; then
-            curl -s -X DELETE -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/releases/$ID"
-            curl -s -X DELETE -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/git/refs/tags/$tag"
+            gh api -X DELETE "repos/${{ github.repository }}/releases/$ID" 2>/dev/null || true
+            gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" 2>/dev/null || true
           fi
         done
         
         # Create new release
-        curl -X POST -H "Authorization: token $TOKEN" \
-          -H "Content-Type: application/json" \
-          "https://api.github.com/repos/$REPO/releases" \
-          -d '{
-            "tag_name": "v2.7.0-recovered",
-            "name": "Note Counter Pro v2.7.0 (Recovered)",
-            "body": "APK rebuilt from decompiled sources with v1+v2+v3 signing.\nPackage: com.lokhnathtechnical.notecounterpro",
-            "draft": false,
-            "prerelease": true
-          }' > release.json
-        
-        UPLOAD_URL=$(python3 -c "import json; print(json.load(open('release.json'))['upload_url'].replace('{?name,label}',''))")
-        
-        curl -X POST -H "Authorization: token $TOKEN" \
-          -H "Content-Type: application/vnd.android.package-archive" \
-          --data-binary @note-counter-pro-debug.apk \
-          "$UPLOAD_URL?name=note-counter-pro-debug.apk"
+        gh release create v2.7.0-recovered \
+          note-counter-pro-debug.apk \
+          --title "Note Counter Pro v2.7.0 (Recovered)" \
+          --notes "APK rebuilt with v1+v2+v3 signing. Package: com.lokhnathtechnical.notecounterpro" \
+          --prerelease

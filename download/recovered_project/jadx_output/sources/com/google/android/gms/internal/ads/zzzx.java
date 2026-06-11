@@ -1,0 +1,18 @@
+package com.google.android.gms.internal.ads;
+
+import java.util.Comparator;
+
+/* loaded from: classes.dex */
+final /* synthetic */ class zzzx implements Comparator {
+    static final /* synthetic */ zzzx zza = new zzzx();
+
+    private /* synthetic */ zzzx() {
+    }
+
+    @Override // java.util.Comparator
+    public final /* synthetic */ int compare(Object obj, Object obj2) {
+        int zzj;
+        zzj = zzzz.zzj((zzzz) obj, (zzzz) obj2);
+        return zzj;
+    }
+}

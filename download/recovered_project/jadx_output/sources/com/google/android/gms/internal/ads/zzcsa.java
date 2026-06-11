@@ -1,0 +1,24 @@
+package com.google.android.gms.internal.ads;
+
+import com.google.android.gms.ads.RequestConfiguration;
+import java.util.Objects;
+
+/* loaded from: classes.dex */
+final class zzcsa implements zzgzl {
+    final /* synthetic */ zzcsh zza;
+
+    public zzcsa(zzcsh zzcshVar) {
+        Objects.requireNonNull(zzcshVar);
+        this.zza = zzcshVar;
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzgzl
+    public final void zza(Throwable th) {
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzgzl
+    public final /* bridge */ /* synthetic */ void zzb(Object obj) {
+        zzcsh zzcshVar = this.zza;
+        zzcshVar.zzu().zzb(zzcshVar.zzt().zzb(zzcshVar.zzr(), zzcshVar.zzs(), false, RequestConfiguration.MAX_AD_CONTENT_RATING_UNSPECIFIED, (String) obj, zzcshVar.zzs().zzc, null, null), true == com.google.android.gms.ads.internal.zzt.zzh().zzs(zzcshVar.zzq()) ? 2 : 1);
+    }
+}

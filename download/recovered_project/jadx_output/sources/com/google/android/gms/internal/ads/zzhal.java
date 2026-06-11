@@ -1,0 +1,43 @@
+package com.google.android.gms.internal.ads;
+
+import java.util.Objects;
+
+/* loaded from: classes.dex */
+final class zzhal extends zzgzv {
+    final /* synthetic */ zzhan zza;
+    private final zzgyv zzb;
+
+    public zzhal(zzhan zzhanVar, zzgyv zzgyvVar) {
+        Objects.requireNonNull(zzhanVar);
+        this.zza = zzhanVar;
+        this.zzb = zzgyvVar;
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzgzv
+    public final /* bridge */ /* synthetic */ Object zza() {
+        zzgyv zzgyvVar = this.zzb;
+        j3.a zza = zzgyvVar.zza();
+        zzgrc.zzl(zza, "AsyncCallable.call returned null instead of a Future. Did you mean to return immediateFuture(null)? %s", zzgyvVar);
+        return zza;
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzgzv
+    public final String zzc() {
+        return this.zzb.toString();
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzgzv
+    public final boolean zzd() {
+        return this.zza.isDone();
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzgzv
+    public final /* synthetic */ void zzf(Object obj) {
+        this.zza.zzk((j3.a) obj);
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzgzv
+    public final void zzg(Throwable th) {
+        this.zza.zzb(th);
+    }
+}

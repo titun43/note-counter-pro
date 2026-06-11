@@ -1,0 +1,561 @@
+        em = "ncp_khata",
+        eg = "ncp_calc_history",
+        eb = {
+            defaultCurrency: "INR",
+            vibration: !0,
+            darkMode: !1,
+            language: "en",
+            hideKhataTotal: !1,
+            isPremium: !1
+        };
+
+    function ev() {
+        try {
+            let e = localStorage.getItem(eh);
+            return e ? JSON.parse(e) : []
+        } catch {
+            return []
+        }
+    }
+
+    function ey() {
+        try {
+            let e = localStorage.getItem(ed);
+            return e ? JSON.parse(e) : []
+        } catch {
+            return []
+        }
+    }
+
+    function ew() {
+        try {
+            let e = localStorage.getItem(ep);
+            return e ? JSON.parse(e) : []
+        } catch {
+            return []
+        }
+    }
+
+    function ex() {
+        try {
+            let e = localStorage.getItem(em);
+            return e ? JSON.parse(e) : []
+        } catch {
+            return []
+        }
+    }
+
+    function ek(e) {
+        let t = ex(),
+            r = t.findIndex(t => t.id === e.id);
+        r >= 0 ? t[r] = e : t.unshift(e), localStorage.setItem(em, JSON.stringify(t))
+    }
+
+    function eS() {
+        try {
+            let e = localStorage.getItem(eg);
+            return e ? JSON.parse(e) : []
+        } catch {
+            return []
+        }
+    }
+
+    function eA() {
+        try {
+            let e = localStorage.getItem(ef);
+            return e ? {
+                ...eb,
+                ...JSON.parse(e)
+            } : eb
+        } catch {
+            return eb
+        }
+    }
+
+    function eN(e) {
+        localStorage.setItem(ef, JSON.stringify(e))
+    }
+    let eE = [{
+            date: "2025-01-26",
+            name: "Republic Day"
+        }, {
+            date: "2025-03-14",
+            name: "Holi"
+        }, {
+            date: "2025-03-31",
+            name: "Id-ul-Fitr"
+        }, {
+            date: "2025-04-10",
+            name: "Mahavir Jayanti"
+        }, {
+            date: "2025-04-14",
+            name: "Dr. Ambedkar Jayanti"
+        }, {
+            date: "2025-04-18",
+            name: "Good Friday"
+        }, {
+            date: "2025-05-12",
+            name: "Buddha Purnima"
+        }, {
+            date: "2025-06-07",
+            name: "Bakri Id"
+        }, {
+            date: "2025-07-06",
+            name: "Muharram"
+        }, {
+            date: "2025-08-15",
+            name: "Independence Day"
+        }, {
+            date: "2025-08-16",
+            name: "Janmashtami"
+        }, {
+            date: "2025-09-05",
+            name: "Milad-un-Nabi"
+        }, {
+            date: "2025-10-02",
+            name: "Gandhi Jayanti"
+        }, {
+            date: "2025-10-12",
+            name: "Dussehra"
+        }, {
+            date: "2025-10-20",
+            name: "Diwali (Deepavali)"
+        }, {
+            date: "2025-11-01",
+            name: "Guru Nanak Jayanti"
+        }, {
+            date: "2025-12-25",
+            name: "Christmas"
+        }, {
+            date: "2026-01-26",
+            name: "Republic Day"
+        }, {
+            date: "2026-03-04",
+            name: "Holi"
+        }, {
+            date: "2026-03-20",
+            name: "Id-ul-Fitr"
+        }, {
+            date: "2026-04-02",
+            name: "Mahavir Jayanti"
+        }, {
+            date: "2026-04-14",
+            name: "Dr. Ambedkar Jayanti"
+        }, {
+            date: "2026-04-03",
+            name: "Good Friday"
+        }, {
+            date: "2026-05-01",
+            name: "Buddha Purnima"
+        }, {
+            date: "2026-06-27",
+            name: "Bakri Id"
+        }, {
+            date: "2026-08-15",
+            name: "Independence Day"
+        }, {
+            date: "2026-10-02",
+            name: "Gandhi Jayanti"
+        }, {
+            date: "2026-10-20",
+            name: "Diwali"
+        }, {
+            date: "2026-12-25",
+            name: "Christmas"
+        }],
+        e_ = [{
+            code: "INR",
+            symbol: "₹",
+            name: "Indian Rupee",
+            nameBN: "ভারতীয় টাকা",
+            denominations: [{
+                value: 500,
+                color: "#7c3aed",
+                textColor: "#ffffff",
+                label: "500",
+                labelBN: "৫০০"
+            }, {
+                value: 200,
+                color: "#f97316",
+                textColor: "#ffffff",
+                label: "200",
+                labelBN: "২০০"
+            }, {
+                value: 100,
+                color: "#8b5cf6",
+                textColor: "#ffffff",
+                label: "100",
+                labelBN: "১০০"
+            }, {
+                value: 50,
+                color: "#06b6d4",
+                textColor: "#ffffff",
+                label: "50",
+                labelBN: "৫০"
+            }, {
+                value: 20,
+                color: "#84cc16",
+                textColor: "#000000",
+                label: "20",
+                labelBN: "২০"
+            }, {
+                value: 10,
+                color: "#f59e0b",
+                textColor: "#000000",
+                label: "10",
+                labelBN: "১০"
+            }, {
+                value: 5,
+                color: "#10b981",
+                textColor: "#ffffff",
+                label: "5",
+                labelBN: "৫"
+            }, {
+                value: 2,
+                color: "#6366f1",
+                textColor: "#ffffff",
+                label: "2",
+                labelBN: "২"
+            }, {
+                value: 1,
+                color: "#ec4899",
+                textColor: "#ffffff",
+                label: "1",
+                labelBN: "১"
+            }]
+        }, {
+            code: "BDT",
+            symbol: "৳",
+            name: "Bangladeshi Taka",
+            nameBN: "বাংলাদেশি টাকা",
+            denominations: [{
+                value: 1e3,
+                color: "#dc2626",
+                textColor: "#ffffff",
+                label: "1000",
+                labelBN: "১০০০"
+            }, {
+                value: 500,
+                color: "#7c3aed",
+                textColor: "#ffffff",
+                label: "500",
+                labelBN: "৫০০"
+            }, {
+                value: 100,
+                color: "#8b5cf6",
+                textColor: "#ffffff",
+                label: "100",
+                labelBN: "১০০"
+            }, {
+                value: 50,
+                color: "#06b6d4",
+                textColor: "#ffffff",
+                label: "50",
+                labelBN: "৫০"
+            }, {
+                value: 20,
+                color: "#84cc16",
+                textColor: "#000000",
+                label: "20",
+                labelBN: "২০"
+            }, {
+                value: 10,
+                color: "#f59e0b",
+                textColor: "#000000",
+                label: "10",
+                labelBN: "১০"
+            }, {
+                value: 5,
+                color: "#10b981",
+                textColor: "#ffffff",
+                label: "5",
+                labelBN: "৫"
+            }, {
+                value: 2,
+                color: "#6366f1",
+                textColor: "#ffffff",
+                label: "2",
+                labelBN: "২"
+            }, {
+                value: 1,
+                color: "#ec4899",
+                textColor: "#ffffff",
+                label: "1",
+                labelBN: "১"
+            }]
+        }, {
+            code: "USD",
+            symbol: "$",
+            name: "US Dollar",
+            nameBN: "মার্কিন ডলার",
+            denominations: [{
+                value: 100,
+                color: "#16a34a",
+                textColor: "#ffffff",
+                label: "100",
+                labelBN: "১০০"
+            }, {
+                value: 50,
+                color: "#dc2626",
+                textColor: "#ffffff",
+                label: "50",
+                labelBN: "৫০"
+            }, {
+                value: 20,
+                color: "#2563eb",
+                textColor: "#ffffff",
+                label: "20",
+                labelBN: "২০"
+            }, {
+                value: 10,
+                color: "#f97316",
+                textColor: "#ffffff",
+                label: "10",
+                labelBN: "১০"
+            }, {
+                value: 5,
+                color: "#7c3aed",
+                textColor: "#ffffff",
+                label: "5",
+                labelBN: "৫"
+            }, {
+                value: 1,
+                color: "#6b7280",
+                textColor: "#ffffff",
+                label: "1",
+                labelBN: "১"
+            }]
+        }, {
+            code: "EUR",
+            symbol: "€",
+            name: "Euro",
+            nameBN: "ইউরো",
+            denominations: [{
+                value: 500,
+                color: "#7c3aed",
+                textColor: "#ffffff",
+                label: "500",
+                labelBN: "৫০০"
+            }, {
+                value: 200,
+                color: "#f97316",
+                textColor: "#ffffff",
+                label: "200",
+                labelBN: "২০০"
+            }, {
+                value: 100,
+                color: "#16a34a",
+                textColor: "#ffffff",
+                label: "100",
+                labelBN: "১০০"
+            }, {
+                value: 50,
+                color: "#f59e0b",
+                textColor: "#000000",
+                label: "50",
+                labelBN: "৫০"
+            }, {
+                value: 20,
+                color: "#2563eb",
+                textColor: "#ffffff",
+                label: "20",
+                labelBN: "২০"
+            }, {
+                value: 10,
+                color: "#dc2626",
+                textColor: "#ffffff",
+                label: "10",
+                labelBN: "১০"
+            }, {
+                value: 5,
+                color: "#6b7280",
+                textColor: "#ffffff",
+                label: "5",
+                labelBN: "৫"
+            }]
+        }, {
+            code: "NPR",
+            symbol: "₨",
+            name: "Nepalese Rupee",
+            nameBN: "নেপালি টাকা",
+            denominations: [{
+                value: 1e3,
+                color: "#dc2626",
+                textColor: "#ffffff",
+                label: "1000",
+                labelBN: "১০০০"
+            }, {
+                value: 500,
+                color: "#7c3aed",
+                textColor: "#ffffff",
+                label: "500",
+                labelBN: "৫০০"
+            }, {
+                value: 100,
+                color: "#8b5cf6",
+                textColor: "#ffffff",
+                label: "100",
+                labelBN: "১০০"
+            }, {
+                value: 50,
+                color: "#06b6d4",
+                textColor: "#ffffff",
+                label: "50",
+                labelBN: "৫০"
+            }, {
+                value: 20,
+                color: "#84cc16",
+                textColor: "#000000",
+                label: "20",
+                labelBN: "২০"
+            }, {
+                value: 10,
+                color: "#f59e0b",
+                textColor: "#000000",
+                label: "10",
+                labelBN: "১০"
+            }, {
+                value: 5,
+                color: "#10b981",
+                textColor: "#ffffff",
+                label: "5",
+                labelBN: "৫"
+            }, {
+                value: 2,
+                color: "#6366f1",
+                textColor: "#ffffff",
+                label: "2",
+                labelBN: "২"
+            }, {
+                value: 1,
+                color: "#ec4899",
+                textColor: "#ffffff",
+                label: "1",
+                labelBN: "১"
+            }]
+        }, {
+            code: "GBP",
+            symbol: "£",
+            name: "British Pound",
+            nameBN: "ব্রিটিশ পাউন্ড",
+            denominations: [{
+                value: 50,
+                color: "#dc2626",
+                textColor: "#ffffff",
+                label: "50",
+                labelBN: "৫০"
+            }, {
+                value: 20,
+                color: "#6366f1",
+                textColor: "#ffffff",
+                label: "20",
+                labelBN: "২০"
+            }, {
+                value: 10,
+                color: "#f97316",
+                textColor: "#ffffff",
+                label: "10",
+                labelBN: "১০"
+            }, {
+                value: 5,
+                color: "#16a34a",
+                textColor: "#ffffff",
+                label: "5",
+                labelBN: "৫"
+            }, {
+                value: 2,
+                color: "#8b5cf6",
+                textColor: "#ffffff",
+                label: "2",
+                labelBN: "২"
+            }, {
+                value: 1,
+                color: "#6b7280",
+                textColor: "#ffffff",
+                label: "1",
+                labelBN: "১"
+            }]
+        }];
+
+    function eC(e) {
+        return e_.find(t => t.code === e) || e_[0]
+    }
+
+    function ej(e, t) {
+        let r = eC(t);
+        return `${r.symbol}${e.toLocaleString("en-IN")}`
+    }
+    let eP = (f = (e, t) => {
+            let r = eA(),
+                n = r.defaultCurrency,
+                i = eC(n),
+                s = {};
+            return i.denominations.forEach(e => {
+                s[String(e.value)] = 0
+            }), {
+                activeTab: "counter",
+                setActiveTab: t => e({
+                    activeTab: t
+                }),
+                currentCurrency: n,
+                setCurrentCurrency: t => {
+                    let r = eC(t),
+                        n = {};
+                    r.denominations.forEach(e => {
+                        n[String(e.value)] = 0
+                    }), e({
+                        currentCurrency: t,
+                        counts: n
+                    })
+                },
+                counts: s,
+                setCount: (t, r) => e(e => ({
+                    counts: {
+                        ...e.counts,
+                        [t]: Math.max(0, r)
+                    }
+                })),
+                incrementCount: t => e(e => ({
+                    counts: {
+                        ...e.counts,
+                        [t]: (e.counts[t] || 0) + 1
+                    }
+                })),
+                decrementCount: t => e(e => ({
+                    counts: {
+                        ...e.counts,
+                        [t]: Math.max(0, (e.counts[t] || 0) - 1)
+                    }
+                })),
+                resetCounts: () => {
+                    let r = eC(t().currentCurrency),
+                        n = {};
+                    r.denominations.forEach(e => {
+                        n[String(e.value)] = 0
+                    }), e({
+                        counts: n,
+                        otherAmount: 0,
+                        onlineAmount: 0,
+                        targetAmount: 0,
+                        category: "",
+                        remark: "",
+                        personName: "",
+                        mobileNumber: "",
+                        accountNumber: ""
+                    })
+                },
+                getTotal: () => {
+                    let {
+                        counts: e,
+                        currentCurrency: r
+                    } = t(), n = eC(r), i = 0;
+                    return n.denominations.forEach(t => {
+                        i += t.value * (e[String(t.value)] || 0)
+                    }), i
+                },
+                getTotalNotes: () => {
+                    let {
+                        counts: e
+                    } = t();
+                    return Object.values(e).reduce((e, t) => e + t, 0)
+                },

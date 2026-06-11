@@ -1,0 +1,62 @@
+package com.google.android.gms.internal.ads;
+
+import android.text.TextUtils;
+import android.util.Base64;
+import java.util.Objects;
+
+/* loaded from: classes.dex */
+final class zzecl implements zzaqu {
+    final /* synthetic */ zzecm zza;
+
+    public zzecl(zzecm zzecmVar) {
+        Objects.requireNonNull(zzecmVar);
+        this.zza = zzecmVar;
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzaqu
+    public final void zza(int i5) {
+        zzaqv zzd;
+        try {
+            zzfpb zza = zzfpc.zza();
+            zza.zzh(i5 != 0 ? i5 != 1 ? i5 != 2 ? i5 != 3 ? 7 : 6 : 5 : 4 : 3);
+            if (i5 == 0 && (zzd = this.zza.zzc().zzd()) != null) {
+                zza.zzb(zzd.zzb());
+                zza.zzc(zzd.zzc());
+                zza.zzd(zzd.zzd());
+                zza.zze(zzd.zze());
+                zza.zzf(zzd.zzf());
+                if (!TextUtils.isEmpty(zzd.zza())) {
+                    zza.zza(zzd.zza());
+                }
+                if (!TextUtils.isEmpty(zzd.zzg())) {
+                    zza.zzg(zzd.zzg());
+                }
+            }
+            zzecm zzecmVar = this.zza;
+            zzecmVar.zzc().zzc();
+            zzdxz zzd2 = zzecmVar.zzd();
+            String encodeToString = Base64.encodeToString(((zzfpc) zza.zzbu()).zzaN(), 1);
+            if (((Boolean) com.google.android.gms.ads.internal.client.zzbd.zzc().zzd(zzbhe.zzfO)).booleanValue()) {
+                zzdxy zza2 = zzd2.zza();
+                zza2.zzc("action", "irda");
+                zza2.zzc("irdd", encodeToString);
+                zza2.zzf();
+            }
+            zzecmVar.zze().zzQ(true);
+        } catch (Exception e4) {
+            if (((Boolean) com.google.android.gms.ads.internal.client.zzbd.zzc().zzd(zzbhe.zzfP)).booleanValue()) {
+                zzecm zzecmVar2 = this.zza;
+                if (zzecmVar2.zzb == null) {
+                    zzecmVar2.zzb = zzbyp.zzc(zzecmVar2.zzb());
+                }
+                zzecmVar2.zzb.zzh(e4, "InstallReferrerUnsampled.onInstallReferrerSetupFinished");
+                return;
+            }
+            zzecm zzecmVar3 = this.zza;
+            if (zzecmVar3.zza == null) {
+                zzecmVar3.zza = zzbyp.zza(zzecmVar3.zzb());
+            }
+            zzecmVar3.zza.zzh(e4, "InstallReferrer.onInstallReferrerSetupFinished");
+        }
+    }
+}

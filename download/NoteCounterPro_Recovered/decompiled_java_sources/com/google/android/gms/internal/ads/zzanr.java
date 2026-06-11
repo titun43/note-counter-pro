@@ -1,0 +1,18 @@
+package com.google.android.gms.internal.ads;
+
+import java.util.Comparator;
+
+/* loaded from: classes.dex */
+final /* synthetic */ class zzanr implements Comparator {
+    static final /* synthetic */ zzanr zza = new zzanr();
+
+    private /* synthetic */ zzanr() {
+    }
+
+    @Override // java.util.Comparator
+    public final /* synthetic */ int compare(Object obj, Object obj2) {
+        int compare;
+        compare = Integer.compare(((zzans) obj).zzb.zzb, ((zzans) obj2).zzb.zzb);
+        return compare;
+    }
+}

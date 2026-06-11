@@ -1,0 +1,14 @@
+package com.google.android.gms.internal.ads;
+
+/* loaded from: classes.dex */
+public interface zzclb {
+    void zzaH(com.google.android.gms.ads.internal.overlay.zzc zzcVar, boolean z4, boolean z5, String str);
+
+    void zzaI(boolean z4, int i5, boolean z5);
+
+    void zzaJ(boolean z4, int i5, String str, boolean z5, boolean z6);
+
+    void zzaK(boolean z4, int i5, String str, String str2, boolean z5);
+
+    void zzaL(String str, String str2, int i5);
+}

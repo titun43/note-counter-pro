@@ -1,0 +1,27 @@
+package com.google.android.gms.ads.internal.util;
+
+import android.content.Context;
+import android.provider.Settings;
+import com.google.android.gms.internal.ads.zzbja;
+import com.google.android.gms.internal.ads.zzcel;
+import j3.a;
+
+/* loaded from: classes.dex */
+public final class zzd {
+    public static void zza(Context context) {
+        int i5 = com.google.android.gms.ads.internal.util.client.zzl.zza;
+        if (((Boolean) zzbja.zza.zze()).booleanValue()) {
+            try {
+                if (Settings.Global.getInt(context.getContentResolver(), "development_settings_enabled", 0) == 0 || com.google.android.gms.ads.internal.util.client.zzl.zzi()) {
+                    return;
+                }
+                a zzb = new zzc(context).zzb();
+                int i6 = zze.zza;
+                com.google.android.gms.ads.internal.util.client.zzo.zzh("Updating ad debug logging enablement.");
+                zzcel.zza(zzb, "AdDebugLogUpdater.updateEnablement");
+            } catch (Exception e4) {
+                com.google.android.gms.ads.internal.util.client.zzo.zzj("Fail to determine debug setting.", e4);
+            }
+        }
+    }
+}

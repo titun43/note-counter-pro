@@ -1,0 +1,16 @@
+package com.google.android.gms.internal.ads;
+
+/* loaded from: classes.dex */
+final /* synthetic */ class zzfyi implements zzgru {
+    static final /* synthetic */ zzfyi zza = new zzfyi();
+
+    private /* synthetic */ zzfyi() {
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzgru
+    public final /* synthetic */ Object zza() {
+        Integer zzB;
+        zzB = zzfyj.zzB();
+        return zzB;
+    }
+}

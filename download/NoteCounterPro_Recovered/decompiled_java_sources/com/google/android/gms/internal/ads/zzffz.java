@@ -1,0 +1,32 @@
+package com.google.android.gms.internal.ads;
+
+/* loaded from: classes.dex */
+public final class zzffz implements zzfgj {
+    private zzdam zza;
+
+    @Override // com.google.android.gms.internal.ads.zzfgj
+    /* renamed from: zza, reason: merged with bridge method [inline-methods] */
+    public final synchronized zzdam zzd() {
+        return this.zza;
+    }
+
+    public final synchronized j3.a zzb(zzfgk zzfgkVar, zzfgi zzfgiVar, zzdam zzdamVar) {
+        zzcxj zza;
+        try {
+            if (zzdamVar != null) {
+                this.zza = zzdamVar;
+            } else {
+                this.zza = (zzdam) zzfgiVar.zza(zzfgkVar.zzb).zzh();
+            }
+            zza = this.zza.zza();
+        } catch (Throwable th) {
+            throw th;
+        }
+        return zza.zzc(zza.zzb());
+    }
+
+    @Override // com.google.android.gms.internal.ads.zzfgj
+    public final /* bridge */ /* synthetic */ j3.a zzc(zzfgk zzfgkVar, zzfgi zzfgiVar, Object obj) {
+        return zzb(zzfgkVar, zzfgiVar, null);
+    }
+}

@@ -21,10 +21,7 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
 
-    - name: Make gradlew executable
-      run: chmod +x gradlew 2>/dev/null || true
-
-    - name: Create gradlew wrapper
+    - name: Create gradlew
       run: |
         cat > gradlew << 'GRADLEW'
         #!/bin/sh

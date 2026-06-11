@@ -22,6 +22,13 @@ jobs:
       run: |
         wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -O apktool.jar
 
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Install build-tools
+      run: |
+        sdkmanager "build-tools;34.0.0"
+
     - name: Prepare and build APK
       run: |
         mkdir -p apktool_project/smali
@@ -33,7 +40,7 @@ jobs:
         rm -f apktool_project/classes.dex
         rm -f apktool_project/*.properties
         
-        # Copy smali code (excluding dailylifepro)
+        # Copy smali code
         cp -r smali_code/* apktool_project/smali/
         
         # Remove leftover dailylifepro package
@@ -46,37 +53,53 @@ jobs:
         
         echo "=== Building APK ==="
         java -jar apktool.jar b apktool_project -o app-unsigned.apk
+
+    - name: Sign APK with apksigner (v1+v2+v3)
+      run: |
+        # Find zipalign and apksigner
+        BUILD_TOOLS=$(ls -d ${ANDROID_HOME}/build-tools/*/ | sort -V | tail -1)
+        echo "Using build-tools: $BUILD_TOOLS"
         
-        echo "=== Signing APK ==="
-        # Check if custom keystore is provided via secrets
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
           echo "Using custom keystore from secrets..."
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
-          
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore release.keystore \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-            -keypass "${{ secrets.KEY_PASSWORD }}" \
-            -signedJar note-counter-pro-signed.apk \
-            app-unsigned.apk \
-            "${{ secrets.KEY_ALIAS }}"
-          
-          mv note-counter-pro-signed.apk note-counter-pro-debug.apk
+          KS_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
+          KP_PASS="${{ secrets.KEY_PASSWORD }}"
+          KS_ALIAS="${{ secrets.KEY_ALIAS }}"
         else
-          echo "No custom keystore found. Using debug signing..."
+          echo "Creating debug keystore..."
           keytool -genkeypair -v -keystore debug.keystore -alias key0 \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass android -keypass android \
             -dname "CN=Android Debug,O=Android,C=US"
-          
-          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore debug.keystore -storepass android -keypass android \
-            app-unsigned.apk key0
-          
-          mv app-unsigned.apk note-counter-pro-debug.apk
+          KS_PASS="android"
+          KP_PASS="android"
+          KS_ALIAS="key0"
+          cp debug.keystore release.keystore
         fi
         
-        jarsigner -verify note-counter-pro-debug.apk
+        # Step 1: zipalign
+        echo "=== Zipaligning APK ==="
+        ${BUILD_TOOLS}zipalign -f 4 app-unsigned.apk app-aligned.apk
+        
+        # Step 2: Sign with apksigner (v1+v2+v3)
+        echo "=== Signing with apksigner (v1+v2+v3) ==="
+        ${BUILD_TOOLS}apksigner sign \
+          --ks release.keystore \
+          --ks-pass pass:${KS_PASS} \
+          --ks-key-alias ${KS_ALIAS} \
+          --key-pass pass:${KP_PASS} \
+          --v1-signing-enabled true \
+          --v2-signing-enabled true \
+          --v3-signing-enabled true \
+          --out note-counter-pro-signed.apk \
+          app-aligned.apk
+        
+        # Verify signing
+        echo "=== Verifying APK signature ==="
+        ${BUILD_TOOLS}apksigner verify --verbose note-counter-pro-signed.apk
+        
+        mv note-counter-pro-signed.apk note-counter-pro-debug.apk
         ls -lh note-counter-pro-debug.apk
 
     - name: Upload APK artifact
@@ -87,34 +110,35 @@ jobs:
 
     - name: Create Release with APK
       run: |
-        # Delete old release if exists
-        curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/tags/v2.7.0-recovered" | \
-          python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id','none'))" > release_id.txt
+        TOKEN="${{ secrets.GITHUB_TOKEN }}"
+        REPO="${{ github.repository }}"
         
-        OLD_ID=$(cat release_id.txt)
-        if [ "$OLD_ID" != "none" ]; then
-          curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/$OLD_ID"
-          curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/v2.7.0-recovered"
-        fi
+        # Delete old release if exists
+        for tag in v2.7.0-recovered v2.7.0-fixed; do
+          ID=$(curl -s -H "Authorization: token $TOKEN" \
+            "https://api.github.com/repos/$REPO/releases/tags/$tag" | \
+            python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+          if [ -n "$ID" ]; then
+            curl -s -X DELETE -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/releases/$ID"
+            curl -s -X DELETE -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/git/refs/tags/$tag"
+          fi
+        done
         
         # Create new release
-        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        curl -X POST -H "Authorization: token $TOKEN" \
           -H "Content-Type: application/json" \
-          "https://api.github.com/repos/${{ github.repository }}/releases" \
+          "https://api.github.com/repos/$REPO/releases" \
           -d '{
             "tag_name": "v2.7.0-recovered",
-            "name": "Note Counter Pro v2.7.0 (Recovered - Fixed Package Name)",
-            "body": "APK rebuilt from decompiled sources. Fixed package name and signing.",
+            "name": "Note Counter Pro v2.7.0 (Recovered)",
+            "body": "APK rebuilt from decompiled sources with v1+v2+v3 signing.\nPackage: com.lokhnathtechnical.notecounterpro",
             "draft": false,
             "prerelease": true
           }' > release.json
         
         UPLOAD_URL=$(python3 -c "import json; print(json.load(open('release.json'))['upload_url'].replace('{?name,label}',''))")
         
-        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        curl -X POST -H "Authorization: token $TOKEN" \
           -H "Content-Type: application/vnd.android.package-archive" \
           --data-binary @note-counter-pro-debug.apk \
           "$UPLOAD_URL?name=note-counter-pro-debug.apk"

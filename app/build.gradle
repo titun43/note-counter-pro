@@ -18,6 +18,9 @@ android {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        debug {
+            minifyEnabled false
+        }
     }
 
     compileOptions {
@@ -33,17 +36,17 @@ android {
 }
 
 dependencies {
-    // Capacitor Core
-    implementation 'com.getcapacitor:capacitor-android:6.2.0'
+    // Capacitor Core (from Maven Central)
+    implementation 'com.getcapacitor:capacitor-android:6.1.0'
 
-    // Capacitor Plugins
-    implementation 'com.capacitorjs:app:6.0.0'
-    implementation 'com.capacitorjs:filesystem:6.0.0'
-    implementation 'com.capacitorjs:haptics:6.0.0'
-    implementation 'com.capacitorjs:share:6.0.0'
+    // Capacitor Plugins (from Maven Central)
+    implementation 'com.capacitorjs:capacitor-app:6.0.0'
+    implementation 'com.capacitorjs:capacitor-filesystem:6.0.0'
+    implementation 'com.capacitorjs:capacitor-haptics:6.0.0'
+    implementation 'com.capacitorjs:capacitor-share:6.0.0'
 
-    // AdMob
-    implementation 'com.getcapacitor.community:admob:6.0.0'
+    // AdMob (from JitPack)
+    implementation 'com.github.capacitor-community:admob:6.0.0'
 
     // Google Play Billing
     implementation 'com.android.billingclient:billing:7.1.1'

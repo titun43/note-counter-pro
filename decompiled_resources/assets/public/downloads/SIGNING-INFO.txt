@@ -4,14 +4,16 @@
 ===========================================
 
 Keystore File: note-counter-pro.keystore
-Keystore Password: NoteCounter@2026
+Keystore Password: Notecounter@2026
 Key Alias: notecounter
-Key Password: NoteCounter@2026
+Key Password: Notecounter@2026
 Validity: 10000 days (~27 years)
 Algorithm: RSA 2048-bit
 
 Package Name: com.lokhnathtechnical.notecounterpro
 App Name: Note Counter Pro
+
+Certificate SHA-256: 06:52:EC:BA:63:62:82:42:75:F4:48:11:D0:67:75:87:E2:55:A7:9D:1E:B5:05:18:FD:F2:B8:CD:71:CA:73:09
 
 ⚠️ IMPORTANT:
 - If you lose this keystore, you CANNOT update your app on Play Store!

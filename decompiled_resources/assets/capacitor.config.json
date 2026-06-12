@@ -3,7 +3,8 @@
 	"appName": "Note Counter Pro",
 	"webDir": "out",
 	"android": {
-		"allowMixedContent": false
+		"allowMixedContent": false,
+		"backgroundColor": "#1a1a2e"
 	},
 	"plugins": {
 		"SplashScreen": {
@@ -16,7 +17,8 @@
 		},
 		"StatusBar": {
 			"style": "DARK",
-			"backgroundColor": "#1a1a2e"
+			"backgroundColor": "#1a1a2e",
+			"overlaysWebView": false
 		},
 		"AdMob": {
 			"appId": "ca-app-pub-1742730064755213~6546486804",

@@ -1,2 +1,9 @@
-skills/
-node_modules/
+# Large binary files
+*.jar
+*.zip
+*.apk
+*.dex
+tools/
+download/
+upload/
+*.keystore

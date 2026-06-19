@@ -146,8 +146,8 @@ jobs:
         cd ..
         
         # Verify protobuf conversion worked
-        ls -la apk_protobuf/AndroidManifest.xml apk_protobuf/resources.pb 2>&1 || true
-        ls -la apk_protobuf/ | head -20
+        echo "=== Files in protobuf APK ==="
+        ls -la apk_protobuf/ | head -30
         
         # Create base module structure for AAB
         mkdir -p base/dex base/res base/assets base/root base/lib base/manifest
@@ -161,17 +161,35 @@ jobs:
           cp apk_extracted/AndroidManifest.xml base/manifest/
         }
         
-        # Copy resources.pb from protobuf APK
-        cp apk_protobuf/resources.pb base/res/ 2>/dev/null || echo "No resources.pb"
+        # Copy resource table - aapt2 convert keeps it as resources.arsc
+        # but in protobuf format. We need to rename to resources.pb for bundletool
+        if [ -f apk_protobuf/resources.arsc ]; then
+          echo "Found resources.arsc in protobuf APK, copying as resources.pb"
+          cp apk_protobuf/resources.arsc base/res/resources.pb
+        elif [ -f apk_protobuf/resources.pb ]; then
+          echo "Found resources.pb in protobuf APK"
+          cp apk_protobuf/resources.pb base/res/resources.pb
+        else
+          echo "WARNING: No resource table found in protobuf APK"
+          echo "Files in apk_protobuf/res/:"
+          ls apk_protobuf/res/ 2>/dev/null || echo "No res folder"
+        fi
         
         # Copy res folder (PNGs and other resource files) from original APK
-        cp -r apk_extracted/res base/res/ 2>/dev/null || echo "No res folder"
+        # Note: bundletool expects res files in res/ folder
+        cp -r apk_extracted/res/* base/res/ 2>/dev/null || echo "No res folder contents"
         
         # Copy assets
         cp -r apk_extracted/assets base/assets/ 2>/dev/null || echo "No assets"
         
         # Copy native libraries (if any)
         cp -r apk_extracted/lib base/lib/ 2>/dev/null || echo "No lib folder"
+        
+        # Show final base module structure
+        echo "=== Final base module structure ==="
+        find base/ -type f | head -20
+        echo "..."
+        echo "Total files: $(find base/ -type f | wc -l)"
         
         # Create base.zip (module bundle)
         cd base

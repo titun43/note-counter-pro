@@ -126,11 +126,28 @@ jobs:
       run: |
         echo "=== Converting APK to AAB ==="
         
-        # Extract APK
+        # First, convert the entire APK to AAPT2 protobuf format
+        # aapt2 convert works on whole APK files, not individual files
+        echo "=== Converting APK to protobuf format ==="
+        ${BUILD_TOOLS}aapt2 convert --output-format protobuf \
+          -o app-protobuf.apk \
+          app-unsigned.apk
+        
+        # Extract original APK (for dex, lib, assets)
         mkdir -p apk_extracted
         cd apk_extracted
         unzip -q ../app-unsigned.apk
         cd ..
+        
+        # Extract protobuf APK (for manifest and resources in correct format)
+        mkdir -p apk_protobuf
+        cd apk_protobuf
+        unzip -q ../app-protobuf.apk
+        cd ..
+        
+        # Verify protobuf conversion worked
+        ls -la apk_protobuf/AndroidManifest.xml apk_protobuf/resources.pb 2>&1 || true
+        ls -la apk_protobuf/ | head -20
         
         # Create base module structure for AAB
         mkdir -p base/dex base/res base/assets base/root base/lib base/manifest
@@ -138,20 +155,16 @@ jobs:
         # Copy dex files (base module)
         cp apk_extracted/*.dex base/dex/ 2>/dev/null || echo "No dex files found"
         
-        # Convert AndroidManifest.xml from binary XML to AAPT2 protobuf format
-        # AAB requires protobuf format, not binary XML
-        echo "=== Converting AndroidManifest.xml to AAPT2 protobuf format ==="
-        ${BUILD_TOOLS}aapt2 convert --output-format protobuf \
-          -o base/manifest/AndroidManifest.xml \
-          apk_extracted/AndroidManifest.xml
+        # Copy AndroidManifest.xml from protobuf APK (in correct format)
+        cp apk_protobuf/AndroidManifest.xml base/manifest/ 2>/dev/null || {
+          echo "AndroidManifest.xml not in protobuf APK, trying original..."
+          cp apk_extracted/AndroidManifest.xml base/manifest/
+        }
         
-        # Convert resources.arsc to protobuf format
-        echo "=== Converting resources.arsc to protobuf format ==="
-        ${BUILD_TOOLS}aapt2 convert --output-format protobuf \
-          -o base/res/resources.pb \
-          apk_extracted/resources.arsc
+        # Copy resources.pb from protobuf APK
+        cp apk_protobuf/resources.pb base/res/ 2>/dev/null || echo "No resources.pb"
         
-        # Copy res folder (PNGs and other resource files)
+        # Copy res folder (PNGs and other resource files) from original APK
         cp -r apk_extracted/res base/res/ 2>/dev/null || echo "No res folder"
         
         # Copy assets

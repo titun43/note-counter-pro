@@ -1,4 +1,4 @@
-name: Build APK with apktool
+name: Build APK and AAB with apktool
 
 on:
   push:
@@ -25,12 +25,16 @@ jobs:
       run: |
         wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -O apktool.jar
 
+    - name: Download bundletool
+      run: |
+        wget -q "https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar" -O bundletool.jar
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Install build-tools
+    - name: Install build-tools and platforms
       run: |
-        sdkmanager "build-tools;34.0.0"
+        sdkmanager "build-tools;35.0.0" "platforms;android-36"
 
     - name: Prepare and build APK
       run: |
@@ -105,13 +109,114 @@ jobs:
         mv note-counter-pro-signed.apk note-counter-pro.apk
         ls -lh note-counter-pro.apk
 
+    - name: Build AAB from APK
+      run: |
+        BUILD_TOOLS=$(ls -d ${ANDROID_HOME}/build-tools/*/ | sort -V | tail -1)
+        AAPT2="${BUILD_TOOLS}aapt2"
+        APKSIGNER="${BUILD_TOOLS}apksigner"
+        
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          KS_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
+          KP_PASS="${{ secrets.KEY_PASSWORD }}"
+          KS_ALIAS="${{ secrets.KEY_ALIAS }}"
+        else
+          KS_PASS="android"
+          KP_PASS="android"
+          KS_ALIAS="key0"
+        fi
+        
+        echo "=== STEP 1: Convert APK to proto format ==="
+        $AAPT2 convert --output-format proto -o app-proto.apk note-counter-pro.apk
+        
+        echo "=== STEP 2: Extract proto APK ==="
+        mkdir -p extracted
+        unzip -q app-proto.apk -d extracted
+        
+        echo "=== STEP 3: Set up AAB base module ==="
+        mkdir -p base/manifest base/dex base/res base/assets base/root
+        
+        # AndroidManifest.xml (proto format)
+        cp extracted/AndroidManifest.xml base/manifest/
+        
+        # IMPORTANT: resources.pb goes at the ROOT of base/, NOT in res/
+        # This is what bundletool expects
+        cp extracted/resources.pb base/
+        
+        # res/ folder (proto-format PNGs and XMLs)
+        if [ -d extracted/res ]; then
+          for item in extracted/res/*; do
+            if [ -d "$item" ]; then
+              dirname=$(basename "$item")
+              mkdir -p "base/res/$dirname"
+              cp -r "$item"/* "base/res/$dirname/" 2>/dev/null || true
+            fi
+          done
+        fi
+        
+        # dex files
+        ls extracted/classes*.dex 2>/dev/null | while read f; do
+          cp "$f" base/dex/
+        done
+        
+        # assets
+        if [ -d extracted/assets ]; then
+          cp -r extracted/assets/* base/assets/ 2>/dev/null || true
+        fi
+        
+        # kotlin builtins to root
+        if [ -d extracted/kotlin ]; then
+          cp -r extracted/kotlin base/root/
+        fi
+        
+        # META-INF/services to root
+        if [ -d extracted/META-INF/services ]; then
+          mkdir -p base/root/META-INF
+          cp -r extracted/META-INF/services base/root/META-INF/
+        fi
+        
+        echo "=== STEP 4: Create base.zip module ==="
+        cd base
+        zip -r ../base.zip . -x '*.DS_Store'
+        cd ..
+        
+        echo "=== STEP 5: Build AAB with bundletool ==="
+        java -jar bundletool.jar build-bundle \
+          --modules=base.zip \
+          --output=app-unsigned.aab \
+          --overwrite
+        
+        echo "=== STEP 6: Sign AAB ==="
+        $APKSIGNER sign \
+          --ks release.keystore \
+          --ks-pass pass:${KS_PASS} \
+          --ks-key-alias ${KS_ALIAS} \
+          --key-pass pass:${KP_PASS} \
+          --v1-signing-enabled true \
+          --v2-signing-enabled true \
+          --v3-signing-enabled true \
+          --v4-signing-enabled false \
+          --min-sdk-version 24 \
+          --out note-counter-pro.aab \
+          app-unsigned.aab
+        
+        echo "=== STEP 7: Validate AAB ==="
+        java -jar bundletool.jar validate --bundle=note-counter-pro.aab | head -20
+        
+        ls -lh note-counter-pro.aab
+
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: note-counter-pro-apk
         path: note-counter-pro.apk
 
-    - name: Create Release with APK
+    - name: Upload AAB artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: note-counter-pro-aab
+        path: note-counter-pro.aab
+
+    - name: Create Release with APK and AAB
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -124,10 +229,11 @@ jobs:
           fi
         done
         
-        # Create new release
-        NOTES="APK rebuilt with v1+v2+v3 signing. Package: com.lokhnathtechnical.notecounterpro\n\nAdMob test mode: DISABLED (production ready)\nPrivacy Policy: https://titun43.github.io/privacy-policy/\n\nFor Play Store upload: APK can be used for first-time upload. For AAB, use the convert-apk-to-aab.py script in scripts/ folder."
+        # Create new release with both APK and AAB
+        NOTES=$(printf '# Note Counter Pro v2.7.0 (Recovered)\n\n## Downloads\n\n- **note-counter-pro.aab** - AAB for Play Store upload (REQUIRED)\n- note-counter-pro.apk - APK for direct install/test\n\n## Build Info\n- Package: com.lokhnathtechnical.notecounterpro\n- Version: 2.7.0 (versionCode: 11)\n- AdMob test mode: DISABLED (production ready)\n- Privacy Policy: https://titun43.github.io/privacy-policy/\n- Signing: v1+v2+v3 schemes\n\n## How to Upload to Play Store\n1. Download note-counter-pro.aab\n2. Go to https://play.google.com/console\n3. Production -> Create new release\n4. Upload the .aab file\n5. Review and rollout')
         gh release create v2.7.0-recovered \
           note-counter-pro.apk \
+          note-counter-pro.aab \
           --title "Note Counter Pro v2.7.0 (Recovered)" \
           --notes "$NOTES" \
           --prerelease

@@ -27,7 +27,8 @@ jobs:
 
     - name: Download bundletool
       run: |
-        wget -q "https://github.com/google/bundletool/releases/download/v1.17.0/bundletool-all-1.17.0.jar" -O bundletool.jar
+        wget -q "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar" -O bundletool.jar
+        ls -lh bundletool.jar
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3

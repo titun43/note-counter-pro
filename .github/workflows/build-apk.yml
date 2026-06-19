@@ -1,4 +1,4 @@
-name: Build APK and AAB with apktool
+name: Build APK with apktool
 
 on:
   push:
@@ -24,11 +24,6 @@ jobs:
     - name: Download apktool
       run: |
         wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -O apktool.jar
-
-    - name: Download bundletool
-      run: |
-        wget -q "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar" -O bundletool.jar
-        ls -lh bundletool.jar
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -62,34 +57,28 @@ jobs:
         echo "=== Building APK ==="
         java -jar apktool.jar b apktool_project -o app-unsigned.apk
 
-    - name: Setup keystore
+    - name: Sign APK with apksigner (v1+v2+v3)
       run: |
-        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-          echo "Using custom keystore from secrets..."
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
-          echo "KEYSTORE_SET=true" >> $GITHUB_ENV
-        else
-          echo "Creating debug keystore..."
-          keytool -genkeypair -v -keystore release.keystore -alias key0 \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
-          echo "KEYSTORE_SET=false" >> $GITHUB_ENV
-        fi
-
-    - name: Build and sign APK (v1+v2+v3)
-      run: |
+        # Find zipalign and apksigner
         BUILD_TOOLS=$(ls -d ${ANDROID_HOME}/build-tools/*/ | sort -V | tail -1)
         echo "Using build-tools: $BUILD_TOOLS"
         
-        if [ "${KEYSTORE_SET}" = "true" ]; then
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "Using custom keystore from secrets..."
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
           KS_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
           KP_PASS="${{ secrets.KEY_PASSWORD }}"
           KS_ALIAS="${{ secrets.KEY_ALIAS }}"
         else
+          echo "Creating debug keystore..."
+          keytool -genkeypair -v -keystore debug.keystore -alias key0 \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
           KS_PASS="android"
           KP_PASS="android"
           KS_ALIAS="key0"
+          cp debug.keystore release.keystore
         fi
         
         # Step 1: zipalign
@@ -97,7 +86,7 @@ jobs:
         ${BUILD_TOOLS}zipalign -f 4 app-unsigned.apk app-aligned.apk
         
         # Step 2: Sign with apksigner (v1+v2+v3)
-        echo "=== Signing APK with apksigner (v1+v2+v3) ==="
+        echo "=== Signing with apksigner (v1+v2+v3) ==="
         ${BUILD_TOOLS}apksigner sign \
           --ks release.keystore \
           --ks-pass pass:${KS_PASS} \
@@ -115,150 +104,6 @@ jobs:
         
         mv note-counter-pro-signed.apk note-counter-pro.apk
         ls -lh note-counter-pro.apk
-        
-        # Save keystore credentials for AAB step
-        echo "KS_PASS=${KS_PASS}" >> $GITHUB_ENV
-        echo "KP_PASS=${KP_PASS}" >> $GITHUB_ENV
-        echo "KS_ALIAS=${KS_ALIAS}" >> $GITHUB_ENV
-        echo "BUILD_TOOLS=${BUILD_TOOLS}" >> $GITHUB_ENV
-
-    - name: Build AAB from APK
-      run: |
-        echo "=== Converting APK to AAB ==="
-        
-        # Approach: Use apktool decompiled resources, recompile with aapt2 in proto format
-        
-        # We already have apktool_project/ with decompiled resources
-        # Use those for AAB building
-        
-        # First, get android.jar for linking
-        echo "=== Locating android.jar ==="
-        ANDROID_JAR=$(find ${ANDROID_HOME}/platforms -name "android.jar" | sort -V | tail -1)
-        echo "Using android.jar: $ANDROID_JAR"
-        
-        # Create base module structure for AAB
-        rm -rf base
-        mkdir -p base/dex base/res base/assets base/root base/lib base/manifest
-        
-        # Copy dex files from the built APK
-        mkdir -p apk_extracted
-        cd apk_extracted
-        unzip -q ../app-unsigned.apk
-        cd ..
-        cp apk_extracted/*.dex base/dex/ 2>/dev/null || echo "No dex files found"
-        
-        # Compile resources with aapt2 in proto format
-        # Using apktool_project/res which has decompiled XML resources
-        echo "=== Compiling resources with aapt2 (proto format) ==="
-        mkdir -p compiled_res
-        
-        # Compile each resource directory
-        for dir in apktool_project/res/*/; do
-          if [ -d "$dir" ]; then
-            dirname=$(basename "$dir")
-            mkdir -p "compiled_res/$dirname"
-            ${BUILD_TOOLS}aapt2 compile --dir "$dir" -o "compiled_res/$dirname/" 2>&1 || true
-          fi
-        done
-        
-        # Collect all compiled .flat files
-        mkdir -p all_compiled
-        find compiled_res -name "*.flat" -exec cp {} all_compiled/ \; 2>/dev/null
-        echo "Compiled .flat files: $(ls all_compiled/ | wc -l)"
-        
-        # Link resources in proto format
-        echo "=== Linking resources in proto format ==="
-        ${BUILD_TOOLS}aapt2 link \
-          --proto-format \
-          -I "$ANDROID_JAR" \
-          --manifest apktool_project/AndroidManifest.xml \
-          -o linked_resources.apk \
-          $(find all_compiled -name "*.flat" | sort) 2>&1 || {
-            echo "aapt2 link failed, trying alternative approach..."
-            
-            # Alternative: just use the original APK's resources, convert manifest only
-            echo "Using APK resources directly with converted manifest..."
-          }
-        
-        # If linking succeeded, extract resources.pb and manifest from linked_resources.apk
-        if [ -f linked_resources.apk ]; then
-          echo "=== Extracting proto-format resources ==="
-          mkdir -p linked
-          cd linked
-          unzip -q ../linked_resources.apk
-          cd ..
-          
-          # Copy resources.pb
-          cp linked/resources.pb base/res/ 2>/dev/null || echo "No resources.pb in linked output"
-          
-          # Copy manifest from linked output (in proto format)
-          cp linked/AndroidManifest.xml base/manifest/ 2>/dev/null || echo "No manifest in linked output"
-          
-          # Copy res folder from linked output (PNGs etc in proto format)
-          cp -r linked/res/* base/res/ 2>/dev/null || echo "No res in linked output"
-        else
-          echo "=== Fallback: using aapt2 convert on whole APK ==="
-          ${BUILD_TOOLS}aapt2 convert --output-format proto -o app-protobuf.apk app-unsigned.apk
-          mkdir -p apk_protobuf
-          cd apk_protobuf
-          unzip -q ../app-protobuf.apk
-          cd ..
-          
-          # Copy manifest
-          cp apk_protobuf/AndroidManifest.xml base/manifest/
-          
-          # Copy resources.arsc as resources.pb (might not work, but try)
-          cp apk_protobuf/resources.arsc base/res/resources.pb 2>/dev/null || echo "No resources.arsc"
-          
-          # Copy res folder from original
-          cp -r apk_extracted/res/* base/res/ 2>/dev/null || echo "No res contents"
-        fi
-        
-        # Copy assets
-        cp -r apk_extracted/assets base/assets/ 2>/dev/null || echo "No assets"
-        
-        # Copy native libraries (if any)
-        cp -r apk_extracted/lib base/lib/ 2>/dev/null || echo "No lib folder"
-        
-        # Show final base module structure
-        echo "=== Final base module structure ==="
-        find base/ -type f | head -20
-        echo "..."
-        echo "Total files: $(find base/ -type f | wc -l)"
-        echo "=== Files in base/res/ ==="
-        ls base/res/ | head -20
-        
-        # Create base.zip (module bundle)
-        cd base
-        zip -r ../base.zip . -x "*.DS_Store"
-        cd ..
-        
-        echo "=== Building AAB with bundletool ==="
-        java -jar bundletool.jar build-bundle \
-          --modules=base.zip \
-          --output=app-unsigned.aab
-        
-        ls -lh app-unsigned.aab
-        
-        # Sign AAB
-        echo "=== Signing AAB ==="
-        ${BUILD_TOOLS}apksigner sign \
-          --ks release.keystore \
-          --ks-pass pass:${KS_PASS} \
-          --ks-key-alias ${KS_ALIAS} \
-          --key-pass pass:${KP_PASS} \
-          --v1-signing-enabled true \
-          --v2-signing-enabled true \
-          --v3-signing-enabled true \
-          --v4-signing-enabled false \
-          --out note-counter-pro.aab \
-          app-unsigned.aab
-        
-        # Verify AAB
-        echo "=== Verifying AAB ==="
-        ${BUILD_TOOLS}apksigner verify --verbose note-counter-pro.aab
-        
-        ls -lh note-counter-pro.aab note-counter-pro.apk
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
@@ -266,13 +111,7 @@ jobs:
         name: note-counter-pro-apk
         path: note-counter-pro.apk
 
-    - name: Upload AAB artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: note-counter-pro-aab
-        path: note-counter-pro.aab
-
-    - name: Create Release with APK and AAB
+    - name: Create Release with APK
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -285,16 +124,16 @@ jobs:
           fi
         done
         
-        # Create new release with both APK and AAB
+        # Create new release
         gh release create v2.7.0-recovered \
           note-counter-pro.apk \
-          note-counter-pro.aab \
           --title "Note Counter Pro v2.7.0 (Recovered)" \
-          --notes "APK and AAB rebuilt with v1+v2+v3 signing. Package: com.lokhnathtechnical.notecounterpro
+          --notes "APK rebuilt with v1+v2+v3 signing. Package: com.lokhnathtechnical.notecounterpro
 
-        Files:
-        - note-counter-pro.apk: Signed APK (for direct installation)
-        - note-counter-pro.aab: Signed AAB (for Play Store upload)
+AdMob test mode: DISABLED (production ready)
+Privacy Policy: https://titun43.github.io/privacy-policy/
 
-        AdMob test mode: DISABLED (production ready)" \
+For Play Store upload:
+- APK can be used for first-time upload
+- For AAB, use the convert-apk-to-aab.py script in scripts/ folder" \
           --prerelease

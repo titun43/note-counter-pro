@@ -1,4 +1,4 @@
-name: Build APK with apktool
+name: Build APK and AAB with apktool
 
 on:
   push:
@@ -24,6 +24,10 @@ jobs:
     - name: Download apktool
       run: |
         wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar" -O apktool.jar
+
+    - name: Download bundletool
+      run: |
+        wget -q "https://github.com/google/bundletool/releases/download/v1.17.0/bundletool-all-1.17.0.jar" -O bundletool.jar
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -57,28 +61,34 @@ jobs:
         echo "=== Building APK ==="
         java -jar apktool.jar b apktool_project -o app-unsigned.apk
 
-    - name: Sign APK with apksigner (v1+v2+v3)
+    - name: Setup keystore
       run: |
-        # Find zipalign and apksigner
-        BUILD_TOOLS=$(ls -d ${ANDROID_HOME}/build-tools/*/ | sort -V | tail -1)
-        echo "Using build-tools: $BUILD_TOOLS"
-        
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
           echo "Using custom keystore from secrets..."
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          echo "KEYSTORE_SET=true" >> $GITHUB_ENV
+        else
+          echo "Creating debug keystore..."
+          keytool -genkeypair -v -keystore release.keystore -alias key0 \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+          echo "KEYSTORE_SET=false" >> $GITHUB_ENV
+        fi
+
+    - name: Build and sign APK (v1+v2+v3)
+      run: |
+        BUILD_TOOLS=$(ls -d ${ANDROID_HOME}/build-tools/*/ | sort -V | tail -1)
+        echo "Using build-tools: $BUILD_TOOLS"
+        
+        if [ "${KEYSTORE_SET}" = "true" ]; then
           KS_PASS="${{ secrets.KEYSTORE_PASSWORD }}"
           KP_PASS="${{ secrets.KEY_PASSWORD }}"
           KS_ALIAS="${{ secrets.KEY_ALIAS }}"
         else
-          echo "Creating debug keystore..."
-          keytool -genkeypair -v -keystore debug.keystore -alias key0 \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
           KS_PASS="android"
           KP_PASS="android"
           KS_ALIAS="key0"
-          cp debug.keystore release.keystore
         fi
         
         # Step 1: zipalign
@@ -86,7 +96,7 @@ jobs:
         ${BUILD_TOOLS}zipalign -f 4 app-unsigned.apk app-aligned.apk
         
         # Step 2: Sign with apksigner (v1+v2+v3)
-        echo "=== Signing with apksigner (v1+v2+v3) ==="
+        echo "=== Signing APK with apksigner (v1+v2+v3) ==="
         ${BUILD_TOOLS}apksigner sign \
           --ks release.keystore \
           --ks-pass pass:${KS_PASS} \
@@ -102,16 +112,94 @@ jobs:
         echo "=== Verifying APK signature ==="
         ${BUILD_TOOLS}apksigner verify --verbose note-counter-pro-signed.apk
         
-        mv note-counter-pro-signed.apk note-counter-pro-debug.apk
-        ls -lh note-counter-pro-debug.apk
+        mv note-counter-pro-signed.apk note-counter-pro.apk
+        ls -lh note-counter-pro.apk
+        
+        # Save keystore credentials for AAB step
+        echo "KS_PASS=${KS_PASS}" >> $GITHUB_ENV
+        echo "KP_PASS=${KP_PASS}" >> $GITHUB_ENV
+        echo "KS_ALIAS=${KS_ALIAS}" >> $GITHUB_ENV
+        echo "BUILD_TOOLS=${BUILD_TOOLS}" >> $GITHUB_ENV
+
+    - name: Build AAB from APK
+      run: |
+        echo "=== Converting APK to AAB ==="
+        
+        # Extract APK
+        mkdir -p apk_extracted
+        cd apk_extracted
+        unzip -q ../app-unsigned.apk
+        cd ..
+        
+        # Create base module structure for AAB
+        mkdir -p base/dex base/res base/assets base/root base/lib base/manifest
+        
+        # Copy dex files (base module)
+        cp apk_extracted/*.dex base/dex/ 2>/dev/null || echo "No dex files found"
+        
+        # Copy resources (already compiled by apktool)
+        # AndroidManifest.xml needs to be in manifest/ folder
+        cp apk_extracted/AndroidManifest.xml base/manifest/
+        
+        # Resources (table + res folder)
+        cp apk_extracted/resources.arsc base/res/ 2>/dev/null || echo "No resources.arsc"
+        cp -r apk_extracted/res base/res/ 2>/dev/null || echo "No res folder"
+        
+        # Copy assets
+        cp -r apk_extracted/assets base/assets/ 2>/dev/null || echo "No assets"
+        
+        # Copy native libraries (if any)
+        cp -r apk_extracted/lib base/lib/ 2>/dev/null || echo "No lib folder"
+        
+        # Copy unknown files to root
+        cp -r apk_extracted/unknown base/root/ 2>/dev/null || true
+        cp apk_extracted/META-INF base/root/ 2>/dev/null || true
+        
+        # Create base.zip (module bundle)
+        cd base
+        zip -r ../base.zip . -x "*.DS_Store"
+        cd ..
+        
+        echo "=== Building AAB with bundletool ==="
+        java -jar bundletool.jar build-bundle \
+          --modules=base.zip \
+          --output=app-unsigned.aab
+        
+        ls -lh app-unsigned.aab
+        
+        # Sign AAB
+        echo "=== Signing AAB ==="
+        ${BUILD_TOOLS}apksigner sign \
+          --ks release.keystore \
+          --ks-pass pass:${KS_PASS} \
+          --ks-key-alias ${KS_ALIAS} \
+          --key-pass pass:${KP_PASS} \
+          --v1-signing-enabled true \
+          --v2-signing-enabled true \
+          --v3-signing-enabled true \
+          --v4-signing-enabled false \
+          --out note-counter-pro.aab \
+          app-unsigned.aab
+        
+        # Verify AAB
+        echo "=== Verifying AAB ==="
+        ${BUILD_TOOLS}apksigner verify --verbose note-counter-pro.aab
+        
+        ls -lh note-counter-pro.aab note-counter-pro.apk
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: note-counter-pro-apk
-        path: note-counter-pro-debug.apk
+        path: note-counter-pro.apk
 
-    - name: Create Release with APK
+    - name: Upload AAB artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: note-counter-pro-aab
+        path: note-counter-pro.aab
+
+    - name: Create Release with APK and AAB
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -124,9 +212,16 @@ jobs:
           fi
         done
         
-        # Create new release
+        # Create new release with both APK and AAB
         gh release create v2.7.0-recovered \
-          note-counter-pro-debug.apk \
+          note-counter-pro.apk \
+          note-counter-pro.aab \
           --title "Note Counter Pro v2.7.0 (Recovered)" \
-          --notes "APK rebuilt with v1+v2+v3 signing. Package: com.lokhnathtechnical.notecounterpro" \
+          --notes "APK and AAB rebuilt with v1+v2+v3 signing. Package: com.lokhnathtechnical.notecounterpro
+
+        Files:
+        - note-counter-pro.apk: Signed APK (for direct installation)
+        - note-counter-pro.aab: Signed AAB (for Play Store upload)
+
+        AdMob test mode: DISABLED (production ready)" \
           --prerelease

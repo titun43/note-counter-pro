@@ -125,15 +125,9 @@ jobs:
         done
         
         # Create new release
+        NOTES="APK rebuilt with v1+v2+v3 signing. Package: com.lokhnathtechnical.notecounterpro\n\nAdMob test mode: DISABLED (production ready)\nPrivacy Policy: https://titun43.github.io/privacy-policy/\n\nFor Play Store upload: APK can be used for first-time upload. For AAB, use the convert-apk-to-aab.py script in scripts/ folder."
         gh release create v2.7.0-recovered \
           note-counter-pro.apk \
           --title "Note Counter Pro v2.7.0 (Recovered)" \
-          --notes "APK rebuilt with v1+v2+v3 signing. Package: com.lokhnathtechnical.notecounterpro
-
-AdMob test mode: DISABLED (production ready)
-Privacy Policy: https://titun43.github.io/privacy-policy/
-
-For Play Store upload:
-- APK can be used for first-time upload
-- For AAB, use the convert-apk-to-aab.py script in scripts/ folder" \
+          --notes "$NOTES" \
           --prerelease

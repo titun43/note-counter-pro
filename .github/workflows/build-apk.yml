@@ -129,7 +129,7 @@ jobs:
         # First, convert the entire APK to AAPT2 protobuf format
         # aapt2 convert works on whole APK files, not individual files
         echo "=== Converting APK to protobuf format ==="
-        ${BUILD_TOOLS}aapt2 convert --output-format protobuf \
+        ${BUILD_TOOLS}aapt2 convert --output-format proto \
           -o app-protobuf.apk \
           app-unsigned.apk
         

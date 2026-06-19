@@ -126,58 +126,93 @@ jobs:
       run: |
         echo "=== Converting APK to AAB ==="
         
-        # First, convert the entire APK to AAPT2 protobuf format
-        # aapt2 convert works on whole APK files, not individual files
-        echo "=== Converting APK to protobuf format ==="
-        ${BUILD_TOOLS}aapt2 convert --output-format proto \
-          -o app-protobuf.apk \
-          app-unsigned.apk
+        # Approach: Use apktool decompiled resources, recompile with aapt2 in proto format
         
-        # Extract original APK (for dex, lib, assets)
+        # We already have apktool_project/ with decompiled resources
+        # Use those for AAB building
+        
+        # First, get android.jar for linking
+        echo "=== Locating android.jar ==="
+        ANDROID_JAR=$(find ${ANDROID_HOME}/platforms -name "android.jar" | sort -V | tail -1)
+        echo "Using android.jar: $ANDROID_JAR"
+        
+        # Create base module structure for AAB
+        rm -rf base
+        mkdir -p base/dex base/res base/assets base/root base/lib base/manifest
+        
+        # Copy dex files from the built APK
         mkdir -p apk_extracted
         cd apk_extracted
         unzip -q ../app-unsigned.apk
         cd ..
-        
-        # Extract protobuf APK (for manifest and resources in correct format)
-        mkdir -p apk_protobuf
-        cd apk_protobuf
-        unzip -q ../app-protobuf.apk
-        cd ..
-        
-        # Verify protobuf conversion worked
-        echo "=== Files in protobuf APK ==="
-        ls -la apk_protobuf/ | head -30
-        
-        # Create base module structure for AAB
-        mkdir -p base/dex base/res base/assets base/root base/lib base/manifest
-        
-        # Copy dex files (base module)
         cp apk_extracted/*.dex base/dex/ 2>/dev/null || echo "No dex files found"
         
-        # Copy AndroidManifest.xml from protobuf APK (in correct format)
-        cp apk_protobuf/AndroidManifest.xml base/manifest/ 2>/dev/null || {
-          echo "AndroidManifest.xml not in protobuf APK, trying original..."
-          cp apk_extracted/AndroidManifest.xml base/manifest/
-        }
+        # Compile resources with aapt2 in proto format
+        # Using apktool_project/res which has decompiled XML resources
+        echo "=== Compiling resources with aapt2 (proto format) ==="
+        mkdir -p compiled_res
         
-        # Copy resource table - aapt2 convert keeps it as resources.arsc
-        # but in protobuf format. We need to rename to resources.pb for bundletool
-        if [ -f apk_protobuf/resources.arsc ]; then
-          echo "Found resources.arsc in protobuf APK, copying as resources.pb"
-          cp apk_protobuf/resources.arsc base/res/resources.pb
-        elif [ -f apk_protobuf/resources.pb ]; then
-          echo "Found resources.pb in protobuf APK"
-          cp apk_protobuf/resources.pb base/res/resources.pb
+        # Compile each resource directory
+        for dir in apktool_project/res/*/; do
+          if [ -d "$dir" ]; then
+            dirname=$(basename "$dir")
+            mkdir -p "compiled_res/$dirname"
+            ${BUILD_TOOLS}aapt2 compile --dir "$dir" -o "compiled_res/$dirname/" 2>&1 || true
+          fi
+        done
+        
+        # Collect all compiled .flat files
+        mkdir -p all_compiled
+        find compiled_res -name "*.flat" -exec cp {} all_compiled/ \; 2>/dev/null
+        echo "Compiled .flat files: $(ls all_compiled/ | wc -l)"
+        
+        # Link resources in proto format
+        echo "=== Linking resources in proto format ==="
+        ${BUILD_TOOLS}aapt2 link \
+          --proto-format \
+          -I "$ANDROID_JAR" \
+          --manifest apktool_project/AndroidManifest.xml \
+          -o linked_resources.apk \
+          $(find all_compiled -name "*.flat" | sort) 2>&1 || {
+            echo "aapt2 link failed, trying alternative approach..."
+            
+            # Alternative: just use the original APK's resources, convert manifest only
+            echo "Using APK resources directly with converted manifest..."
+          }
+        
+        # If linking succeeded, extract resources.pb and manifest from linked_resources.apk
+        if [ -f linked_resources.apk ]; then
+          echo "=== Extracting proto-format resources ==="
+          mkdir -p linked
+          cd linked
+          unzip -q ../linked_resources.apk
+          cd ..
+          
+          # Copy resources.pb
+          cp linked/resources.pb base/res/ 2>/dev/null || echo "No resources.pb in linked output"
+          
+          # Copy manifest from linked output (in proto format)
+          cp linked/AndroidManifest.xml base/manifest/ 2>/dev/null || echo "No manifest in linked output"
+          
+          # Copy res folder from linked output (PNGs etc in proto format)
+          cp -r linked/res/* base/res/ 2>/dev/null || echo "No res in linked output"
         else
-          echo "WARNING: No resource table found in protobuf APK"
-          echo "Files in apk_protobuf/res/:"
-          ls apk_protobuf/res/ 2>/dev/null || echo "No res folder"
+          echo "=== Fallback: using aapt2 convert on whole APK ==="
+          ${BUILD_TOOLS}aapt2 convert --output-format proto -o app-protobuf.apk app-unsigned.apk
+          mkdir -p apk_protobuf
+          cd apk_protobuf
+          unzip -q ../app-protobuf.apk
+          cd ..
+          
+          # Copy manifest
+          cp apk_protobuf/AndroidManifest.xml base/manifest/
+          
+          # Copy resources.arsc as resources.pb (might not work, but try)
+          cp apk_protobuf/resources.arsc base/res/resources.pb 2>/dev/null || echo "No resources.arsc"
+          
+          # Copy res folder from original
+          cp -r apk_extracted/res/* base/res/ 2>/dev/null || echo "No res contents"
         fi
-        
-        # Copy res folder (PNGs and other resource files) from original APK
-        # Note: bundletool expects res files in res/ folder
-        cp -r apk_extracted/res/* base/res/ 2>/dev/null || echo "No res folder contents"
         
         # Copy assets
         cp -r apk_extracted/assets base/assets/ 2>/dev/null || echo "No assets"
@@ -190,6 +225,8 @@ jobs:
         find base/ -type f | head -20
         echo "..."
         echo "Total files: $(find base/ -type f | wc -l)"
+        echo "=== Files in base/res/ ==="
+        ls base/res/ | head -20
         
         # Create base.zip (module bundle)
         cd base

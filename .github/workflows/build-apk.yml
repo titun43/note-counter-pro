@@ -138,12 +138,20 @@ jobs:
         # Copy dex files (base module)
         cp apk_extracted/*.dex base/dex/ 2>/dev/null || echo "No dex files found"
         
-        # Copy resources (already compiled by apktool)
-        # AndroidManifest.xml needs to be in manifest/ folder
-        cp apk_extracted/AndroidManifest.xml base/manifest/
+        # Convert AndroidManifest.xml from binary XML to AAPT2 protobuf format
+        # AAB requires protobuf format, not binary XML
+        echo "=== Converting AndroidManifest.xml to AAPT2 protobuf format ==="
+        ${BUILD_TOOLS}aapt2 convert --output-format protobuf \
+          -o base/manifest/AndroidManifest.xml \
+          apk_extracted/AndroidManifest.xml
         
-        # Resources (table + res folder)
-        cp apk_extracted/resources.arsc base/res/ 2>/dev/null || echo "No resources.arsc"
+        # Convert resources.arsc to protobuf format
+        echo "=== Converting resources.arsc to protobuf format ==="
+        ${BUILD_TOOLS}aapt2 convert --output-format protobuf \
+          -o base/res/resources.pb \
+          apk_extracted/resources.arsc
+        
+        # Copy res folder (PNGs and other resource files)
         cp -r apk_extracted/res base/res/ 2>/dev/null || echo "No res folder"
         
         # Copy assets
@@ -151,10 +159,6 @@ jobs:
         
         # Copy native libraries (if any)
         cp -r apk_extracted/lib base/lib/ 2>/dev/null || echo "No lib folder"
-        
-        # Copy unknown files to root
-        cp -r apk_extracted/unknown base/root/ 2>/dev/null || true
-        cp apk_extracted/META-INF base/root/ 2>/dev/null || true
         
         # Create base.zip (module bundle)
         cd base

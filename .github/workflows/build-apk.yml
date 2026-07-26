@@ -221,7 +221,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Delete old release if exists
-        for tag in v2.7.0-recovered v2.7.0-fixed; do
+        for tag in v2.7.0-recovered v2.7.0-fixed v2.8.0-closed-testing; do
           ID=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq '.id' 2>/dev/null || echo "")
           if [ -n "$ID" ]; then
             gh api -X DELETE "repos/${{ github.repository }}/releases/$ID" 2>/dev/null || true
@@ -230,10 +230,10 @@ jobs:
         done
         
         # Create new release with both APK and AAB
-        NOTES=$(printf '# Note Counter Pro v2.7.0 (Recovered)\n\n## Downloads\n\n- **note-counter-pro.aab** - AAB for Play Store upload (REQUIRED)\n- note-counter-pro.apk - APK for direct install/test\n\n## Build Info\n- Package: com.lokhnathtechnical.notecounterpro\n- Version: 2.7.0 (versionCode: 11)\n- AdMob test mode: DISABLED (production ready)\n- Privacy Policy: https://titun43.github.io/privacy-policy/\n- Signing: v1+v2+v3 schemes\n\n## How to Upload to Play Store\n1. Download note-counter-pro.aab\n2. Go to https://play.google.com/console\n3. Production -> Create new release\n4. Upload the .aab file\n5. Review and rollout')
-        gh release create v2.7.0-recovered \
+        NOTES=$(printf '# Note Counter Pro v2.8.0 (Closed Testing)\n\n## Downloads\n\n- **note-counter-pro.aab** - AAB for Play Store closed testing upload (REQUIRED)\n- note-counter-pro.apk - APK for direct install/test\n\n## Build Info\n- Package: com.lokhnathtechnical.notecounterpro\n- Version: 2.8.0 (versionCode: 12)\n- AdMob test mode: DISABLED (production ready)\n- Privacy Policy: https://titun43.github.io/privacy-policy/\n- Signing: v1+v2+v3 schemes\n\n## How to Upload to Play Store Closed Testing\n1. Download note-counter-pro.aab\n2. Go to https://play.google.com/console\n3. Testing -> Closed testing -> Create new release\n4. Upload the .aab file\n5. Add 12 testers (Google Group or email list)\n6. Review and rollout to closed testing')
+        gh release create v2.8.0-closed-testing \
           note-counter-pro.apk \
           note-counter-pro.aab \
-          --title "Note Counter Pro v2.7.0 (Recovered)" \
+          --title "Note Counter Pro v2.8.0 (Closed Testing)" \
           --notes "$NOTES" \
           --prerelease

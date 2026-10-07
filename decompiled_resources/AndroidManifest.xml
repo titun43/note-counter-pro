@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    android:versionCode="15"
+    android:versionCode="16"
     android:versionName="2.8.1"
     android:compileSdkVersion="36"
     android:compileSdkVersionCodename="16"
@@ -15,14 +15,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
-    <uses-permission android:name="com.android.vending.BILLING"/>
     <queries>
-        <intent>
-            <action android:name="com.android.vending.billing.InAppBillingService.BIND"/>
-        </intent>
-        <intent>
-            <action android:name="com.google.android.apps.play.billingtestcompanion.BillingOverrideService.BIND"/>
-        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <category android:name="android.intent.category.BROWSABLE"/>

@@ -221,7 +221,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Delete old release if exists
-        for tag in v2.7.0-recovered v2.7.0-fixed v2.8.0-closed-testing v2.8.1-closed-testing v2.8.1-vc14 v2.8.1-production; do
+        for tag in v2.7.0-recovered v2.7.0-fixed v2.8.0-closed-testing v2.8.1-closed-testing v2.8.1-vc14 v2.8.1-production v2.8.1-noiap; do
           ID=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq '.id' 2>/dev/null || echo "")
           if [ -n "$ID" ]; then
             gh api -X DELETE "repos/${{ github.repository }}/releases/$ID" 2>/dev/null || true
@@ -230,10 +230,10 @@ jobs:
         done
         
         # Create new release with both APK and AAB
-        NOTES=$(printf '# Note Counter Pro v2.8.1 (Production, vc15)\n\n## Downloads\n\n- **note-counter-pro.aab** - AAB for Play Store production upload (REQUIRED)\n- note-counter-pro.apk - APK for direct install/test\n\n## Build Info\n- Package: com.lokhnathtechnical.notecounterpro\n- Version: 2.8.1 (versionCode: 15)\n- AdMob test mode: DISABLED (production ready)\n- Privacy Policy: https://titun43.github.io/privacy-policy/\n- Signing: v1+v2+v3 schemes\n\n## How to Upload to Play Store Production\n1. Download note-counter-pro.aab\n2. Go to https://play.google.com/console\n3. Production -> Create new release\n4. Upload the .aab file\n5. Add release notes\n6. Review and rollout to production')
-        gh release create v2.8.1-production \
+        NOTES=$(printf '# Note Counter Pro v2.8.1 (Production, vc16, No-IAP)\n\n## Downloads\n\n- **note-counter-pro.aab** - AAB for Play Store production upload (REQUIRED)\n- note-counter-pro.apk - APK for direct install/test\n\n## Build Info\n- Package: com.lokhnathtechnical.notecounterpro\n- Version: 2.8.1 (versionCode: 16)\n- Play Billing Library: REMOVED (no IAP in this build)\n- AdMob test mode: DISABLED (production ready)\n- Privacy Policy: https://titun43.github.io/privacy-policy/\n- Signing: v1+v2+v3 schemes\n\n## Important Changes\n- Premium feature is now unlocked by default for all users\n- Google Play Billing dependency removed to comply with Play Store policy\n- In-app purchase flow disabled (no users had purchased yet)\n\n## How to Upload to Play Store Production\n1. Download note-counter-pro.aab\n2. Go to https://play.google.com/console\n3. Production -> Create new release\n4. Upload the .aab file\n5. Add release notes\n6. Review and rollout to production')
+        gh release create v2.8.1-noiap \
           note-counter-pro.apk \
           note-counter-pro.aab \
-          --title "Note Counter Pro v2.8.1 (Production, vc15)" \
+          --title "Note Counter Pro v2.8.1 (Production, vc16, No-IAP)" \
           --notes "$NOTES" \
           --latest

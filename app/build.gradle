@@ -8,7 +8,7 @@ android {
         applicationId "com.lokhnathtechnical.notecounterpro"
         minSdk 24
         targetSdk 36
-        versionCode 14
+        versionCode 15
         versionName "2.8.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

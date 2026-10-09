@@ -578,7 +578,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
     container.appendChild(menu);
     container.appendChild(fab);
-    document.body.appendChild(container);
+    // CRITICAL: Append to documentElement (<html>), NOT document.body
+    // React only manipulates <body>'s children, so <html>'s direct children survive
+    document.documentElement.appendChild(container);
 
     let menuOpen = false;
     function toggleMenu(open) {
@@ -655,11 +657,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   // Try to init multiple times (Next.js hydration may take a while)
   function startInitAttempts() {
     let attempts = 0;
-    const maxAttempts = 20; // Try for up to 20 seconds
+    const maxAttempts = 60; // Try for up to 60 seconds (1 attempt per second)
     
     function attempt() {
       attempts++;
-      // Only create if not exists AND body has actual app content
+      // Only create if not exists
       if (!document.getElementById('ncp-fab-container')) {
         initEnhancements();
       }
@@ -674,46 +676,51 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   // Watch for FAB being removed from DOM (React re-renders can do this)
   // and re-add it if missing
   function setupFabWatcher() {
-    const observer = new MutationObserver(function (mutations) {
-      // Check if FAB was removed
+    // Use MutationObserver on documentElement (more reliable than body)
+    const observer = new MutationObserver(function () {
       if (!document.getElementById('ncp-fab-container')) {
-        // Wait a bit, then re-create
         setTimeout(() => {
           if (!document.getElementById('ncp-fab-container')) {
-            console.log('FAB was removed, re-creating...');
+            console.log('[NCP] FAB removed, re-creating...');
             createFab();
           }
-        }, 100);
+        }, 50);
       }
     });
     
-    // Observe body and all its descendants for childList changes
-    observer.observe(document.body, {
+    observer.observe(document.documentElement, {
       childList: true,
-      subtree: false // Only direct children of body
+      subtree: false
     });
     
-    // Also observe #ncp-fab-container's parent (when it exists)
+    // Backup: aggressive check every 500ms
     setInterval(() => {
-      const fab = document.getElementById('ncp-fab-container');
-      if (!fab) {
-        // FAB missing, re-create
-        if (!document.getElementById('ncp-fab-container')) {
-          createFab();
-        }
+      if (!document.getElementById('ncp-fab-container')) {
+        createFab();
       }
-    }, 2000); // Check every 2 seconds as backup
+    }, 500);
   }
 
   whenReady(function () {
     // Initial attempt
     startInitAttempts();
     // Setup watcher to keep FAB alive
-    setTimeout(setupFabWatcher, 2000);
-    console.log('%cNote Counter Pro: Custom enhancements v2.8.3 loaded', 'color:#fbbf24;font-weight:bold;');
-    console.log('  - UPI QR Code generator (local) ready');
-    console.log('  - CSV export ready');
-    console.log('  - Rate Us / Share App ready');
-    console.log('  - FAB watcher active');
+    setTimeout(setupFabWatcher, 1000);
+    console.log('%c[NCP] Custom enhancements v2.8.5 loaded', 'color:#fbbf24;font-weight:bold;');
+    console.log('[NCP] FAB will be attached to <html> element (React-safe)');
+    
+    // Visible debug indicator (top-left corner, tiny)
+    // Remove after 5 seconds - just to confirm script is running
+    const debug = document.createElement('div');
+    debug.id = 'ncp-debug-indicator';
+    debug.style.cssText = `
+      position:fixed;top:5px;left:5px;z-index:2147483647;
+      background:#10b981;color:white;padding:2px 6px;border-radius:4px;
+      font-size:10px;font-family:monospace;font-weight:bold;
+      pointer-events:none;opacity:0.9;
+    `;
+    debug.textContent = 'NCP v2.8.5';
+    document.documentElement.appendChild(debug);
+    setTimeout(() => { if (debug.parentNode) debug.parentNode.removeChild(debug); }, 5000);
   });
 })();

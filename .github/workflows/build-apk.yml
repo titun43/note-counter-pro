@@ -221,7 +221,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Delete old release if exists
-        for tag in v2.7.0-recovered v2.7.0-fixed v2.8.0-closed-testing v2.8.1-closed-testing v2.8.1-vc14 v2.8.1-production v2.8.1-noiap v2.8.1-realmob v2.8.2-features v2.8.2-qrfix; do
+        for tag in v2.7.0-recovered v2.7.0-fixed v2.8.0-closed-testing v2.8.1-closed-testing v2.8.1-vc14 v2.8.1-production v2.8.1-noiap v2.8.1-realmob v2.8.2-features v2.8.2-qrfix v2.8.3-localqr; do
           ID=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq '.id' 2>/dev/null || echo "")
           if [ -n "$ID" ]; then
             gh api -X DELETE "repos/${{ github.repository }}/releases/$ID" 2>/dev/null || true
@@ -230,10 +230,10 @@ jobs:
         done
         
         # Create new release with both APK and AAB
-        NOTES=$(printf '# Note Counter Pro v2.8.2 (vc19 - QR Share Fix)\\n\\n## Downloads\\n\\n- **note-counter-pro.aab** - AAB for Play Store upload (REQUIRED)\\n- note-counter-pro.apk - APK for direct install/test\\n\\n## Build Info\\n- Package: com.lokhnathtechnical.notecounterpro\\n- Version: 2.8.2 (versionCode: 19)\\n- AdMob: Real ads (isTesting: false, test device config ready)\\n- Play Billing Library: REMOVED\\n- Signing: v1+v2+v3 schemes\\n\\n## 🆕 New Features in 2.8.2\\n\\n### 💳 UPI QR Code Payment (FIXED in vc19)\\n- Generate UPI payment QR codes instantly\\n- NEW: Save QR image button (saves to Documents/Downloads)\\n- NEW: Long-press on QR image for native save/share menu\\n- Fixed: Share QR now tries Capacitor Share plugin first, then web API, then WhatsApp\\n- Direct UPI app deep-link via Open in UPI App button\\n- Save your UPI ID for reuse\\n\\n### 📊 CSV Export\\n- Export entries as CSV (Excel/Sheets compatible)\\n- Export customers as CSV\\n- One-click export of both\\n- BOM included for proper Unicode support\\n\\n### ⭐ Rate Us / Share App\\n- Floating action button with quick actions\\n- Rate on Play Store shortcut\\n- Share app via native share sheet\\n- Send feedback via email\\n- Auto-prompt after 7 days of usage\\n\\n### 🧹 Cleanup\\n- Removed all Play Billing Library references from manifest\\n- Removed BILLING permission\\n- Removed InAppBillingService queries\\n- AdMob test device configuration ready\\n\\n## How to Upload to Play Store\\n1. Download note-counter-pro.aab\\n2. Go to https://play.google.com/console\\n3. Production -> Create new release\\n4. Upload the .aab file\\n5. Add release notes\\n6. Review and rollout')
-        gh release create v2.8.2-qrfix \
+        NOTES=$(printf '# Note Counter Pro v2.8.3 (vc20 - Local QR Generation)\\n\\n## Downloads\\n\\n- **note-counter-pro.aab** - AAB for Play Store upload (REQUIRED)\\n- note-counter-pro.apk - APK for direct install/test\\n\\n## Build Info\\n- Package: com.lokhnathtechnical.notecounterpro\\n- Version: 2.8.3 (versionCode: 20)\\n- AdMob: Real ads (isTesting: false, test device config ready)\\n- Play Billing Library: REMOVED\\n- Signing: v1+v2+v3 schemes\\n\\n## 🆕 MAJOR FIX in 2.8.3\\n\\n### 💳 UPI QR Code - Now 100%% Local Generation\\n- QR codes now generated entirely on-device (no external API)\\n- No more CORS issues / network dependency for QR\\n- QR image is a canvas element - long-press to save/share works\\n- Save QR Image button now uses direct base64 (no fetch)\\n- Share QR button now uses direct base64 (no fetch)\\n- Inlined qrcode-generator library (MIT, by Kazuhiko Arase)\\n\\n## 🆕 Previous Features (from 2.8.2)\\n\\n### 📊 CSV Export\\n- Export entries as CSV (Excel/Sheets compatible)\\n- Export customers as CSV\\n- One-click export of both\\n\\n### ⭐ Rate Us / Share App\\n- Floating action button with quick actions\\n- Rate on Play Store shortcut\\n- Share app via native share sheet\\n- Send feedback via email\\n- Auto-prompt after 7 days of usage\\n\\n### 🧹 Cleanup\\n- Removed all Play Billing Library references from manifest\\n- Removed BILLING permission\\n- AdMob test device configuration ready\\n\\n## How to Upload to Play Store\\n1. Download note-counter-pro.aab\\n2. Go to https://play.google.com/console\\n3. Production -> Create new release\\n4. Upload the .aab file\\n5. Add release notes\\n6. Review and rollout')
+        gh release create v2.8.3-localqr \
           note-counter-pro.apk \
           note-counter-pro.aab \
-          --title "Note Counter Pro v2.8.2 (vc19 - QR Share Fix)" \
+          --title "Note Counter Pro v2.8.3 (vc20 - Local QR Generation)" \
           --notes "$NOTES" \
           --latest

@@ -73,8 +73,10 @@
           <div id="ncp-upi-qr-image" style="background:#fff;padding:12px;border-radius:8px;display:inline-block;margin-bottom:12px;"></div>
           <p id="ncp-upi-amount-display" style="color:#fbbf24;font-size:20px;font-weight:600;margin:8px 0;"></p>
           <p id="ncp-upi-name-display" style="color:#9ca3af;font-size:14px;margin:4px 0;"></p>
-          <button id="ncp-upi-share" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-top:8px;">Share QR</button>
-          <button id="ncp-upi-pay-now" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-top:8px;">Open in UPI App</button>
+          <p style="color:#6b7280;font-size:11px;margin:8px 0 12px 0;line-height:1.4;">💡 Tip: Long-press on the QR image to save or share it directly</p>
+          <button id="ncp-upi-save" style="width:100%;padding:10px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px;display:flex;align-items:center;gap:8px;justify-content:center;"><span>💾</span> Save QR Image</button>
+          <button id="ncp-upi-share" style="width:100%;padding:10px;background:#10b981;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-top:8px;display:flex;align-items:center;gap:8px;justify-content:center;"><span>📤</span> Share QR</button>
+          <button id="ncp-upi-pay-now" style="width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-top:8px;display:flex;align-items:center;gap:8px;justify-content:center;"><span>📲</span> Open in UPI App</button>
         </div>
       </div>
     `;
@@ -118,41 +120,158 @@
       const amountDisplay = modal.querySelector('#ncp-upi-amount-display');
       const nameDisplay = modal.querySelector('#ncp-upi-name-display');
 
-      qrImage.innerHTML = `<img src="${qrImageUrl}" alt="UPI QR" style="display:block;width:216px;height:216px;">`;
+      qrImage.innerHTML = `<img id="ncp-upi-qr-img-tag" src="${qrImageUrl}" alt="UPI QR - Long press to save/share" crossorigin="anonymous" style="display:block;width:216px;height:216px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:default;pointer-events:auto;" />`;
       amountDisplay.textContent = amount && parseFloat(amount) > 0 ? `₹ ${parseFloat(amount).toFixed(2)}` : '';
       nameDisplay.textContent = payeeName || upiId;
 
       result.style.display = 'block';
       generateBtn.style.display = 'none';
 
-      // Share button
+      // Save QR Image button - downloads image to device
+      modal.querySelector('#ncp-upi-save').onclick = async () => {
+        try {
+          const saveBtn = modal.querySelector('#ncp-upi-save');
+          saveBtn.textContent = 'Saving...';
+          saveBtn.disabled = true;
+
+          // Try Capacitor Filesystem first if available
+          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+            try {
+              const response = await fetch(qrImageUrl);
+              const blob = await response.blob();
+              const reader = new FileReader();
+              const base64 = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              const { Filesystem, Directory, Encoding } = window.Capacitor.Plugins.Filesystem;
+              const fileName = `upi-qr-${Date.now()}.png`;
+              await Filesystem.writeFile({
+                path: fileName,
+                data: base64,
+                directory: Directory.Documents,
+                recursive: true
+              });
+              alert('✅ QR image saved!\nLocation: Documents/' + fileName);
+              saveBtn.innerHTML = '<span>💾</span> Save QR Image';
+              saveBtn.disabled = false;
+              return;
+            } catch (capErr) {
+              console.warn('Capacitor save failed, falling back', capErr);
+            }
+          }
+
+          // Fallback: use anchor download
+          const response = await fetch(qrImageUrl);
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `upi-qr-${Date.now()}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          alert('✅ QR image saved to Downloads!');
+          saveBtn.innerHTML = '<span>💾</span> Save QR Image';
+          saveBtn.disabled = false;
+        } catch (e) {
+          console.error('Save failed', e);
+          alert('❌ Could not save image. Try long-press on the QR image instead.');
+          const saveBtn = modal.querySelector('#ncp-upi-save');
+          saveBtn.innerHTML = '<span>💾</span> Save QR Image';
+          saveBtn.disabled = false;
+        }
+      };
+
+      // Share button - tries native share with image, falls back to WhatsApp
       modal.querySelector('#ncp-upi-share').onclick = async () => {
+        const shareBtn = modal.querySelector('#ncp-upi-share');
+        const originalText = shareBtn.innerHTML;
+        shareBtn.textContent = 'Sharing...';
+        shareBtn.disabled = true;
+
+        const shareText = `${payeeName ? payeeName + ' - ' : ''}${amount ? '₹' + amount + ' - ' : ''}Scan to pay via UPI`;
+
+        // Try Capacitor Share plugin first (best in Android WebView)
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
+          try {
+            // First fetch image as base64
+            const response = await fetch(qrImageUrl);
+            const blob = await response.blob();
+            const reader = new FileReader();
+            const base64Data = await new Promise((resolve, reject) => {
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+
+            // Try sharing image via Capacitor Share
+            try {
+              await window.Capacitor.Plugins.Share.share({
+                title: 'Payment QR',
+                text: shareText,
+                url: base64Data,
+                dialogTitle: 'Share QR Code'
+              });
+              shareBtn.innerHTML = originalText;
+              shareBtn.disabled = false;
+              return;
+            } catch (capShareErr) {
+              console.warn('Capacitor image share failed, trying text-only', capShareErr);
+              // Try text-only share with URL
+              await window.Capacitor.Plugins.Share.share({
+                title: 'Payment QR',
+                text: shareText + '\n\nScan this UPI link:\n' + upiUrl,
+                dialogTitle: 'Share QR Code'
+              });
+              shareBtn.innerHTML = originalText;
+              shareBtn.disabled = false;
+              return;
+            }
+          } catch (capErr) {
+            console.warn('Capacitor share failed entirely, trying web API', capErr);
+          }
+        }
+
+        // Try web navigator.share with image
         if (navigator.share) {
           try {
-            // Try to fetch image as blob for sharing
             const response = await fetch(qrImageUrl);
             const blob = await response.blob();
             const file = new File([blob], 'upi-qr.png', { type: 'image/png' });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
               await navigator.share({
                 title: 'Payment QR',
-                text: `${payeeName ? payeeName + ' - ' : ''}${amount ? '₹' + amount + ' - ' : ''}Scan to pay via UPI`,
+                text: shareText,
                 files: [file]
               });
+              shareBtn.innerHTML = originalText;
+              shareBtn.disabled = false;
               return;
             }
           } catch (e) {
             console.warn('File share failed, falling back to URL share', e);
           }
-          await navigator.share({
-            title: 'Payment QR',
-            text: `Pay me via UPI: ${upiUrl}`
-          });
-        } else {
-          // Fallback: open WhatsApp share
-          const shareText = encodeURIComponent(`Pay me via UPI:\n${upiUrl}`);
-          window.open(`https://wa.me/?text=${shareText}`, '_blank');
+          try {
+            await navigator.share({
+              title: 'Payment QR',
+              text: shareText + '\n\nUPI link: ' + upiUrl
+            });
+            shareBtn.innerHTML = originalText;
+            shareBtn.disabled = false;
+            return;
+          } catch (e2) {
+            console.warn('URL share also failed', e2);
+          }
         }
+
+        // Final fallback: open WhatsApp share with text
+        const whatsappText = encodeURIComponent(shareText + '\n\nUPI link: ' + upiUrl);
+        window.open(`https://wa.me/?text=${whatsappText}`, '_blank');
+        shareBtn.innerHTML = originalText;
+        shareBtn.disabled = false;
       };
 
       // Pay now button - opens UPI app directly

@@ -29,11 +29,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
    * WAIT FOR APP TO LOAD
    * ============================================================ */
   function whenReady(callback) {
-    if (document.readyState === 'complete') {
-      setTimeout(callback, 1500);
+    // Start immediately, our init system handles waiting
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(callback, 500);
     } else {
+      window.addEventListener('DOMContentLoaded', function () {
+        setTimeout(callback, 500);
+      });
       window.addEventListener('load', function () {
-        setTimeout(callback, 1500);
+        setTimeout(callback, 500);
       });
     }
   }
@@ -638,12 +642,78 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   /* ============================================================
    * INIT
    * ============================================================ */
-  whenReady(function () {
+  // Robust init: try multiple times AND keep FAB alive with MutationObserver
+  function initEnhancements() {
+    if (document.getElementById('ncp-fab-container')) {
+      // Already exists, don't recreate
+      return;
+    }
     createFab();
     maybeShowRateUsPrompt();
-    console.log('%cNote Counter Pro: Custom enhancements loaded', 'color:#fbbf24;font-weight:bold;');
-    console.log('  - UPI QR Code generator ready');
+  }
+
+  // Try to init multiple times (Next.js hydration may take a while)
+  function startInitAttempts() {
+    let attempts = 0;
+    const maxAttempts = 20; // Try for up to 20 seconds
+    
+    function attempt() {
+      attempts++;
+      // Only create if not exists AND body has actual app content
+      if (!document.getElementById('ncp-fab-container')) {
+        initEnhancements();
+      }
+      
+      if (attempts < maxAttempts) {
+        setTimeout(attempt, 1000);
+      }
+    }
+    attempt();
+  }
+
+  // Watch for FAB being removed from DOM (React re-renders can do this)
+  // and re-add it if missing
+  function setupFabWatcher() {
+    const observer = new MutationObserver(function (mutations) {
+      // Check if FAB was removed
+      if (!document.getElementById('ncp-fab-container')) {
+        // Wait a bit, then re-create
+        setTimeout(() => {
+          if (!document.getElementById('ncp-fab-container')) {
+            console.log('FAB was removed, re-creating...');
+            createFab();
+          }
+        }, 100);
+      }
+    });
+    
+    // Observe body and all its descendants for childList changes
+    observer.observe(document.body, {
+      childList: true,
+      subtree: false // Only direct children of body
+    });
+    
+    // Also observe #ncp-fab-container's parent (when it exists)
+    setInterval(() => {
+      const fab = document.getElementById('ncp-fab-container');
+      if (!fab) {
+        // FAB missing, re-create
+        if (!document.getElementById('ncp-fab-container')) {
+          createFab();
+        }
+      }
+    }, 2000); // Check every 2 seconds as backup
+  }
+
+  whenReady(function () {
+    // Initial attempt
+    startInitAttempts();
+    // Setup watcher to keep FAB alive
+    setTimeout(setupFabWatcher, 2000);
+    console.log('%cNote Counter Pro: Custom enhancements v2.8.3 loaded', 'color:#fbbf24;font-weight:bold;');
+    console.log('  - UPI QR Code generator (local) ready');
     console.log('  - CSV export ready');
     console.log('  - Rate Us / Share App ready');
+    console.log('  - FAB watcher active');
   });
 })();

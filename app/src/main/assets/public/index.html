@@ -227,20 +227,29 @@ function createFab() {
   if (document.getElementById('ncp-fab-mini')) return;
   var f = document.createElement('div');
   f.id = 'ncp-fab-mini';
-  f.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:2147483647;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;font-family:sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.4);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation';
+  f.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:2147483647;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;font-family:sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.4);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;-ms-touch-action:none';
   f.textContent = '+';
-  // Use pointerdown for instant response
-  f.addEventListener('pointerdown', function(e) {
+  // CRITICAL: Use touchstart for instant response on Android WebView
+  // touchstart fires BEFORE click/pointerdown, before React can intercept
+  var touchHandled = false;
+  function handleTap(e) {
+    if (touchHandled) return;
+    touchHandled = true;
     e.preventDefault();
     e.stopPropagation();
+    e.cancelBubble = true;
+    if (e.stopPropagation) e.stopPropagation();
     openQuickActions();
-  });
-  // Also handle click as backup
-  f.addEventListener('click', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    openQuickActions();
-  });
+    setTimeout(function() { touchHandled = false; }, 500);
+  }
+  // touchstart - fires FIRST on touch devices (Android)
+  f.addEventListener('touchstart', handleTap, { passive: false, capture: true });
+  // pointerdown - backup for non-touch
+  f.addEventListener('pointerdown', handleTap, { capture: true });
+  // click - final backup
+  f.addEventListener('click', handleTap, { capture: true });
+  // mousedown - for mouse devices
+  f.addEventListener('mousedown', handleTap, { capture: true });
   document.documentElement.appendChild(f);
 }
 

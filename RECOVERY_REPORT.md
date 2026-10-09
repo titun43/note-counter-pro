@@ -5,7 +5,7 @@
 |---|---|
 | **App Name** | Note Counter Pro |
 | **Package Name** | com.lokhnathtechnical.notecounterpro |
-| **Version** | 2.8.8 (versionCode: 25) |
+| **Version** | 2.8.9 (versionCode: 26) |
 | **Min SDK** | 24 (Android 7.0) |
 | **Target SDK** | 36 (Android 16) |
 | **Technology** | Capacitor + Next.js (Hybrid App) |

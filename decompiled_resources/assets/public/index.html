@@ -1,4 +1,42 @@
-<!DOCTYPE html><html lang="en" class="geist_a71539c9-module__T19VSG__variable geist_mono_8d43a2aa-module__8Li5zG__variable h-full antialiased dark"><head><style>
+<!DOCTYPE html><html lang="en" class="geist_a71539c9-module__T19VSG__variable geist_mono_8d43a2aa-module__8Li5zG__variable h-full antialiased dark"><head><script>(function(){
+// === NCP BOOTSTRAP v2.8.6 - inline, runs before React ===
+function createDebugBadge(){
+  if(document.getElementById('ncp-debug-perm'))return;
+  var b=document.createElement('div');
+  b.id='ncp-debug-perm';
+  b.style.cssText='position:fixed;top:0;left:0;z-index:2147483647;background:#10b981;color:#fff;padding:3px 8px;font-size:11px;font-family:monospace;font-weight:bold;pointer-events:none;border-radius:0 0 6px 0;box-shadow:0 2px 4px rgba(0,0,0,0.3)';
+  b.textContent='NCP v2.8.6';
+  document.documentElement.appendChild(b);
+}
+function createFab(){
+  if(document.getElementById('ncp-fab-mini'))return;
+  var f=document.createElement('div');
+  f.id='ncp-fab-mini';
+  f.style.cssText='position:fixed;bottom:80px;right:16px;z-index:2147483647;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;font-family:sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.4);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none';
+  f.textContent='+';
+  f.onclick=function(){
+    // Try to call the full features from external script
+    if(window.NCP_openMenu){window.NCP_openMenu();return;}
+    // Fallback: load external script then open
+    var s=document.createElement('script');
+    s.src='/ncp-enhancements.js';
+    s.onload=function(){if(window.NCP_openMenu)window.NCP_openMenu();};
+    document.head.appendChild(s);
+  };
+  document.documentElement.appendChild(f);
+}
+// Create immediately
+createDebugBadge();
+createFab();
+// Re-create every 500ms forever (React can't stop us)
+setInterval(function(){
+  createDebugBadge();
+  createFab();
+},500);
+// Also re-create on DOMContentLoaded and load
+document.addEventListener('DOMContentLoaded',function(){createDebugBadge();createFab();});
+window.addEventListener('load',function(){createDebugBadge();createFab();});
+})();</script><style>
 :root {
   --sab: 0px;
 }

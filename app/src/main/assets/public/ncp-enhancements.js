@@ -702,25 +702,31 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   whenReady(function () {
-    // Initial attempt
-    startInitAttempts();
-    // Setup watcher to keep FAB alive
-    setTimeout(setupFabWatcher, 1000);
-    console.log('%c[NCP] Custom enhancements v2.8.5 loaded', 'color:#fbbf24;font-weight:bold;');
-    console.log('[NCP] FAB will be attached to <html> element (React-safe)');
+    // Note: FAB is now created by inline bootstrap in index.html
+    // We only need to export the menu open function for the bootstrap FAB to call
     
-    // Visible debug indicator (top-left corner, tiny)
-    // Remove after 5 seconds - just to confirm script is running
-    const debug = document.createElement('div');
-    debug.id = 'ncp-debug-indicator';
-    debug.style.cssText = `
-      position:fixed;top:5px;left:5px;z-index:2147483647;
-      background:#10b981;color:white;padding:2px 6px;border-radius:4px;
-      font-size:10px;font-family:monospace;font-weight:bold;
-      pointer-events:none;opacity:0.9;
-    `;
-    debug.textContent = 'NCP v2.8.5';
-    document.documentElement.appendChild(debug);
-    setTimeout(() => { if (debug.parentNode) debug.parentNode.removeChild(debug); }, 5000);
+    // Export menu open function for inline bootstrap to call
+    window.NCP_openMenu = function() {
+      // Create a simple menu modal
+      var existingMenu = document.getElementById('ncp-quick-menu');
+      if (existingMenu) {
+        existingMenu.remove();
+        return;
+      }
+      var menu = document.createElement('div');
+      menu.id = 'ncp-quick-menu';
+      menu.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;font-family:sans-serif;';
+      menu.innerHTML = '<div style="background:#1a1a2e;color:#fff;border-radius:16px;padding:24px;max-width:300px;width:100%;border:1px solid #fbbf24;"><h2 style="margin:0 0 16px 0;color:#fbbf24;font-size:18px;">Quick Actions</h2><button id="ncp-qm-upi" style="width:100%;padding:12px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-bottom:8px;">UPI QR Code</button><button id="ncp-qm-csv" style="width:100%;padding:12px;background:#10b981;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-bottom:8px;">Export CSV</button><button id="ncp-qm-rate" style="width:100%;padding:12px;background:#fbbf24;color:#1a1a2e;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-bottom:8px;">Rate Us</button><button id="ncp-qm-close" style="width:100%;padding:12px;background:#374151;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;">Close</button></div>';
+      document.documentElement.appendChild(menu);
+      menu.onclick = function(e){if(e.target===menu)menu.remove();};
+      menu.querySelector('#ncp-qm-close').onclick = function(){menu.remove();};
+      menu.querySelector('#ncp-qm-upi').onclick = function(){menu.remove();openUpiQrModal();};
+      menu.querySelector('#ncp-qm-csv').onclick = function(){menu.remove();openExportModal();};
+      menu.querySelector('#ncp-qm-rate').onclick = function(){menu.remove();openRateShareModal();};
+    };
+    
+    maybeShowRateUsPrompt();
+    console.log('%c[NCP] Custom enhancements v2.8.6 loaded', 'color:#fbbf24;font-weight:bold;');
+    console.log('[NCP] NCP_openMenu exported to window');
   });
 })();

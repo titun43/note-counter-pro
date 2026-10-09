@@ -22,7 +22,11 @@
                         "appId": "ca-app-pub-1742730064755213~6546486804",
                         "bannerAdId": "ca-app-pub-1742730064755213/3078015084",
                         "interstitialAdId": "ca-app-pub-1742730064755213/1816904301",
-                        "isTesting": false
+                        "isTesting": false,
+                        "testDevices": [
+                                "YOUR_TEST_DEVICE_ID_HERE"
+                        ],
+                        "initializeForTesting": false
                 }
         }
 }

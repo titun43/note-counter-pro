@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    android:versionCode="17"
-    android:versionName="2.8.1"
+    android:versionCode="18"
+    android:versionName="2.8.2"
     android:compileSdkVersion="36"
     android:compileSdkVersionCodename="16"
     package="com.lokhnathtechnical.notecounterpro"
@@ -81,19 +81,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"/>
         </provider>
-        <meta-data
-            android:name="com.google.android.play.billingclient.version"
-            android:value="7.1.1"/>
-        <activity
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:name="com.android.billingclient.api.ProxyBillingActivity"
-            android:exported="false"
-            android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard"/>
-        <activity
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:name="com.android.billingclient.api.ProxyBillingActivityV2"
-            android:exported="false"
-            android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard"/>
         <activity
             android:theme="@android:style/Theme.Translucent.NoTitleBar"
             android:name="com.google.android.gms.common.api.GoogleApiActivity"

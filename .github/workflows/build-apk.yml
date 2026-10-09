@@ -221,7 +221,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Delete old release if exists
-        for tag in v2.7.0-recovered v2.7.0-fixed v2.8.0-closed-testing v2.8.1-closed-testing v2.8.1-vc14 v2.8.1-production v2.8.1-noiap v2.8.1-realmob; do
+        for tag in v2.7.0-recovered v2.7.0-fixed v2.8.0-closed-testing v2.8.1-closed-testing v2.8.1-vc14 v2.8.1-production v2.8.1-noiap v2.8.1-realmob v2.8.2-features; do
           ID=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq '.id' 2>/dev/null || echo "")
           if [ -n "$ID" ]; then
             gh api -X DELETE "repos/${{ github.repository }}/releases/$ID" 2>/dev/null || true
@@ -230,10 +230,10 @@ jobs:
         done
         
         # Create new release with both APK and AAB
-        NOTES=$(printf '# Note Counter Pro v2.8.1 (Production, vc17, Real AdMob)\n\n## Downloads\n\n- **note-counter-pro.aab** - AAB for Play Store production upload (REQUIRED)\n- note-counter-pro.apk - APK for direct install/test\n\n## Build Info\n- Package: com.lokhnathtechnical.notecounterpro\n- Version: 2.8.1 (versionCode: 17)\n- AdMob test mode: DISABLED (real ads, production ready)\n- Play Billing Library: REMOVED (no IAP in this build)\n- Privacy Policy: https://titun43.github.io/privacy-policy/\n- Signing: v1+v2+v3 schemes\n\n## Important Changes\n- AdMob isTesting set to false (real ads will be shown to users)\n- Premium feature is now unlocked by default for all users\n- Google Play Billing dependency removed to comply with Play Store policy\n\n## How to Upload to Play Store Production\n1. Download note-counter-pro.aab\n2. Go to https://play.google.com/console\n3. Production -> Create new release\n4. Upload the .aab file\n5. Add release notes\n6. Review and rollout to production')
-        gh release create v2.8.1-realmob \
+        NOTES=$(printf '# Note Counter Pro v2.8.2 (vc18 - New Features)\n\n## Downloads\n\n- **note-counter-pro.aab** - AAB for Play Store upload (REQUIRED)\n- note-counter-pro.apk - APK for direct install/test\n\n## Build Info\n- Package: com.lokhnathtechnical.notecounterpro\n- Version: 2.8.2 (versionCode: 18)\n- AdMob: Real ads (isTesting: false, test device config ready)\n- Play Billing Library: REMOVED\n- Signing: v1+v2+v3 schemes\n\n## 🆕 New Features in 2.8.2\n\n### 💳 UPI QR Code Payment\n- Generate UPI payment QR codes instantly\n- Share QR via WhatsApp/Share sheet\n- Direct UPI app deep-link\n- Save your UPI ID for reuse\n\n### 📊 CSV Export\n- Export entries as CSV (Excel/Sheets compatible)\n- Export customers as CSV\n- One-click export of both\n- BOM included for proper Unicode support\n\n### ⭐ Rate Us / Share App\n- Floating action button with quick actions\n- Rate on Play Store shortcut\n- Share app via native share sheet\n- Send feedback via email\n- Auto-prompt after 7 days of usage\n\n### 🧹 Cleanup\n- Removed all Play Billing Library references from manifest\n- Removed BILLING permission\n- Removed InAppBillingService queries\n- AdMob test device configuration ready\n\n## How to Upload to Play Store\n1. Download note-counter-pro.aab\n2. Go to https://play.google.com/console\n3. Production -> Create new release\n4. Upload the .aab file\n5. Add release notes\n6. Review and rollout')
+        gh release create v2.8.2-features \
           note-counter-pro.apk \
           note-counter-pro.aab \
-          --title "Note Counter Pro v2.8.1 (Production, vc17, Real AdMob)" \
+          --title "Note Counter Pro v2.8.2 (UPI QR + CSV + Rate Us)" \
           --notes "$NOTES" \
           --latest
